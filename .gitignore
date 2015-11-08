@@ -1,0 +1,6 @@
+/data*
+*.pyc
+*.log
+*.out
+*.temp
+.python-version
