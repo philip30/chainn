@@ -21,6 +21,12 @@ def convert_to_GPU(use_gpu, model):
     else:
         return model
 
+def to_cpu(use_gpu, array):
+    if use_gpu:
+        return cuda.to_cpu(array)
+    else:
+        return array
+
 def select_wrapper(use_gpu):
     if not use_gpu:
         return np

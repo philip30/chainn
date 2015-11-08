@@ -12,7 +12,7 @@ from collections import defaultdict
 from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers, utils
 
 batchsize = 10
-epoch     = 30 
+epoch     = 60 
 xp        = None
 
 def main():
@@ -27,7 +27,7 @@ def main():
             embed_size   = args.embed_size,
             hidden_size  = args.hidden_size,
             output_size  = len(y_ids))
-    optimizer         = optimizers.SGD()
+    optimizer         = optimizers.SGD(lr=0.5)
   
     # Begin Training
     UF.init_model_parameters(model)
@@ -149,9 +149,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="A program to run Recursive Neural Network classifier using chainner")
     parser.add_argument("--train", type=str, required=True)
     parser.add_argument("--test", type=str, required=True)
-    parser.add_argument("--input_size", type=int, default=4000)
-    parser.add_argument("--hidden_size", type=int, default=100)
-    parser.add_argument("--embed_size", type=int, default=100)
+    parser.add_argument("--input_size", type=int, default=5000)
+    parser.add_argument("--hidden_size", type=int, default=50)
+    parser.add_argument("--embed_size", type=int, default=200)
     parser.add_argument("--use_cpu", action="store_true")
     return parser.parse_args()
 
