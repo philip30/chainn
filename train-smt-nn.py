@@ -19,14 +19,15 @@ from chainer import optimizers
 # Default parameters
 def_embed      = 256
 def_hidden     = 512
-def_batchsize  = 1
+def_batchsize  = 64
 def_input      = 32768
 def_output     = 32768
 def_epoch      = 100
 def_lr         = 0.01
+def_decay      = 1.2     # LR = 80% * LR
 
 # Constants
-grad_clip      = 10
+grad_clip      = 5
 bp_len         = 1
 EOS            = "</s>"
 STUFF          = "*"
@@ -72,8 +73,8 @@ def main():
 
         # Decaying learning rate
         if epoch > 8:
-            model.decay_lr(1.2)
-            
+            model.decay_lr(args.decay_factor)
+        model.save(sys.stdout)
 
 """
 Utility functions
@@ -107,12 +108,12 @@ def convert_to_id(batch, src_voc, trg_voc):
     trg_batch = []
     for src, trg in batch:
         swids  = [SRC[x] for x in src]
-        swids += [SRC[STUFF]] * (max_src - len(swids))
+        swids += [SRC[EOS]] * (max_src - len(swids))
         swids.append(SRC[EOS])
         src_batch.append(swids)
         twids  = [TRG[x] for x in trg]
-        twids += [TRG[STUFF]] * (max_trg - len(twids))
-#        twids.append(TRG[EOS])
+        twids += [TRG[EOS]] * (max_trg - len(twids))
+        twids.append(TRG[EOS])
         trg_batch.append(twids)
     return src_batch, trg_batch
 
@@ -138,7 +139,8 @@ def parse_args():
     parser.add_argument("--input", type=int, default=def_input)
     parser.add_argument("--output", type=int, default=def_output)
     parser.add_argument("--epoch", type=int, default=def_epoch)
-    parser.add_argument("--lr", type=float, default=1.0)
+    parser.add_argument("--lr", type=float, default=def_lr)
+    parser.add_argument("--decay_factor", type=float,default=def_decay)
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--model",choices=["encdec","att"], default="encdec")
     return parser.parse_args()

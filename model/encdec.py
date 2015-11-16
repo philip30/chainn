@@ -3,7 +3,7 @@ import numpy as np
 import chainer.functions as F
 import util.functions as UF
 
-from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers, utils
+from chainer import FunctionSet, Variable, optimizers
 from util.settings import DecoderSettings as DS
 
 class EncoderDecoder:
@@ -38,28 +38,37 @@ class EncoderDecoder:
     def update(self, loss):
         self._optimizer.zero_grads()
         loss.backward()
-        #loss.unchain_backward()
-        print("GC:",self._gc)
+        loss.unchain_backward()
         self._optimizer.clip_grads(self._gc)
         self._optimizer.update()
+    
+    def decoder(self, src_batch):
+        pass
+
+    def save(self, fp):
+        pass
+
+    def load(self, fp):
+        pass
 
     """ 
     Privates 
     """
+    # Architecture from: https://github.com/odashi/chainer_examples
     def __init_model(self):
         I, O = DS.input, DS.output
         H, E = DS.hidden, DS.embed
         model = FunctionSet(
             # Encoder
-            embed = F.EmbedID(I, E),
-            d_eh = F.Linear(E, 4 * H),
-            d_hh = F.Linear(H, 4 * H),
+            w_xi = F.EmbedID(I, E),
+            w_ip = F.Linear(E, 4 * H),
+            w_pp = F.Linear(H, 4 * H),
             # Decoder
-            e_hx = F.Linear(H, 4 * H),
-            e_xe = F.Linear(H, E),
-            e_ey = F.Linear(E, O),
-            e_yh = F.EmbedID(O, 4 * H),
-            e_hh = F.Linear(H, 4* H)
+            w_pq = F.Linear(H, 4 * H),
+            w_qj = F.Linear(H, E),
+            w_jy = F.Linear(E, O),
+            w_yq = F.EmbedID(O, 4 * H),
+            w_qq = F.Linear(H, 4* H)
         )
         return model
 
@@ -68,30 +77,28 @@ class EncoderDecoder:
         m          = self._model
         row_len    = len(src_batch)
         col_len    = len(src_batch[0])
+        SRC, TRG   = DS.src_voc, DS.trg_voc
         
         # Encoding (Reading up source sentence)
-        c = Variable(xp.zeros((row_len, hidden), dtype=np.float32)) # cell state
-        h = Variable(xp.zeros((row_len, hidden), dtype=np.float32)) # outgoing signal
+        s_c = Variable(xp.zeros((row_len, hidden), dtype=np.float32)) # cell state
+        s_p = Variable(xp.zeros((row_len, hidden), dtype=np.float32)) # outgoing signal
         for j in reversed(range(col_len)):
-            x    = Variable(xp.array([src_batch[i][j] for i in range(row_len)], dtype=np.int32))
-            e    = F.tanh(m.embed(x))
-            c, h = F.lstm(c, m.d_eh(e) + m.d_hh(h))
+            s_x      = Variable(xp.array([src_batch[i][j] for i in range(row_len)], dtype=np.int32))
+            s_i      = F.tanh(m.w_xi(s_x))
+            s_c, s_p = F.lstm(s_c, m.w_ip(s_i) + m.w_pp(s_p))
         
         # Decoding (Producing target tokens)
         accum_loss = Variable(xp.zeros((), dtype=np.float32))
         col_len    = len(trg_batch[0])
         output_l   = [[] for i in range(row_len)]
-        c, h       = F.lstm(c, m.e_hx(h))
+        s_c, s_q   = F.lstm(s_c, m.w_pq(s_p))
         for j in range(col_len):
-            e = F.tanh(m.e_xe(h))
-            y = m.e_ey(e)
-            print(y.data)
-            t = Variable(xp.array([trg_batch[i][j] for i in range(row_len)], dtype=np.int32))
-            print(t.data)
-            accum_loss += F.softmax_cross_entropy(y, t)
-            print(accum_loss.data)
-            output      = UF.to_cpu(DS.use_gpu, y.data).argmax(1)
-            c, h        = F.lstm(c, m.e_yh(t) + m.e_hh(h))
+            s_j = F.tanh(m.w_qj(s_q))
+            r_y = m.w_jy(s_j)
+            s_t = Variable(xp.array([trg_batch[i][j] for i in range(row_len)], dtype=np.int32))
+            accum_loss += F.softmax_cross_entropy(r_y, s_t)
+            output      = UF.to_cpu(DS.use_gpu, r_y.data).argmax(1)
+            s_c, s_q    = F.lstm(s_c, m.w_yq(s_t) + m.w_qq(s_q))
             
             # Collecting Output
             for i in range(row_len):
