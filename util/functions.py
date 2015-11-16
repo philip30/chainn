@@ -9,9 +9,9 @@ def trace(*args, debug_level=0):
         print(datetime.datetime.now(), '...', *args, file=sys.stderr)
         sys.stderr.flush()
 
-def init_model_parameters(model):
+def init_model_parameters(model, minimum=-0.1, maximum=0.1):
     for param in model.parameters:
-        param[:] = np.random.uniform(-0.1, 0.1, param.shape)
+        param[:] = np.random.uniform(minimum, maximum, param.shape)
 
 def convert_to_GPU(use_gpu, model):
     if use_gpu:

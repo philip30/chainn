@@ -240,7 +240,7 @@ def parse_args():
     parser.add_argument("--embed_size", type=int, default=def_embed)
     parser.add_argument("--batch_size", type=int, default=def_batchsize)
     parser.add_argument("--epoch", type=int, default=def_epoch)
-    parser.add_argument("--lr", type=float, default=1.0)
+    parser.add_argument("--lr", type=float, default=def_lr)
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--model",choices=["lstm","rnn"], default="lstm")
     return parser.parse_args()
