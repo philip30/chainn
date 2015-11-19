@@ -1,11 +1,16 @@
 from collections import defaultdict
 
 UNK = "<UNK>"
+EOS = "</s>"
 class Vocabulary:
     # Overloading methods
-    def __init__(self):
+    def __init__(self, EOS=None):
         self._data = defaultdict(lambda: len(self._data))
         self._back = {}
+        self._eos  = EOS
+
+        if EOS is not None:
+            self.__getitem__(EOS)
 
     def __getitem__(self, index):
         id = self._data[index]
@@ -30,7 +35,8 @@ class Vocabulary:
         return str(self._data)
 
     # Public
-    def str_rpr(self, data, EOS=None):
+    def str_rpr(self, data):
+        EOS = self._eos
         ret = []
         for tok in data:
             ret.append(self.tok_rpr(tok))
@@ -51,3 +57,20 @@ class Vocabulary:
                 line = line.strip().lower().split()
                 for tok in line:
                     self.__getitem__(tok)
+
+    def get_eos(self):
+        return self._eos
+
+    def save(self, fp):
+        print(len(self._data), file=fp)
+        for word, index in sorted(self._data.items(), key=lambda x:int(x[1])):
+            print(str(index) + "\t" + str(word), file=fp)
+
+    @staticmethod
+    def load(fp):
+        size = int(next(fp))
+        self = Vocabulary(EOS)
+        for i in range(size):
+            index, word = next(fp).strip().split("\t")
+            self[word] = int(index)
+        return self

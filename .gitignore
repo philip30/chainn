@@ -3,4 +3,5 @@
 *.log
 *.out
 *.temp
+*.model
 .python-version

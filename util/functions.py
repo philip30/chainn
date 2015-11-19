@@ -4,14 +4,11 @@ import numpy as np
 from . import globalvars
 from chainer import cuda
 
+# Utility
 def trace(*args, debug_level=0):
     if debug_level <= globalvars.DEBUG_LEVEL:
         print(datetime.datetime.now(), '...', *args, file=sys.stderr)
         sys.stderr.flush()
-
-def init_model_parameters(model, minimum=-0.1, maximum=0.1):
-    for param in model.parameters:
-        param[:] = np.random.uniform(minimum, maximum, param.shape)
 
 def convert_to_GPU(use_gpu, model):
     if use_gpu:
@@ -32,3 +29,32 @@ def select_wrapper(use_gpu):
         return np
     else:
         return cuda.cupy
+
+# SMT decoder model
+def init_model_parameters(model, minimum=-0.1, maximum=0.1):
+    for param in model.parameters:
+        param[:] = np.random.uniform(minimum, maximum, param.shape)
+
+def select_model(model):
+    from model.encdec import EncoderDecoder
+    from model.attentional import Attentional
+    
+    if model == "encdec":
+        return EncoderDecoder
+    else:
+        return Attentional
+
+# Serialization
+def vtos(v, fmt='%.8e'):
+    return ' '.join(fmt % x for x in v)
+
+def stov(s, tp=float):
+    return [tp(x) for x in s.split()]
+
+# Argparse
+def check_positive(value, cast=float):
+    ivalue = cast(value)
+    if ivalue <= 0:
+         raise argparse.ArgumentTypeError("%s is an invalid positive value" % value)
+    return ivalue
+
