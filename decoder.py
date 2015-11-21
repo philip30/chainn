@@ -33,7 +33,7 @@ def main():
             trg = model.decode(src)
             print_result(trg, TRG)
     else:
-        UF.trace("src is not specified, starting interactive mode.")
+        UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
         for line in sys.stdin:
             line = POST([PRE(line)])

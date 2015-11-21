@@ -5,56 +5,10 @@ import util.functions as UF
 from chainer import FunctionSet, Variable, optimizers, cuda
 from util.io import ModelFile
 from util.vocabulary import Vocabulary
+from .deepsmt import DeepSMT
 
-class EncoderDecoder:
-    """ 
-    Constructor 
-    """
-    def __init__(self, src_voc=None, trg_voc=None,\
-            optimizer=optimizers.SGD(), gc=10, hidden=5, \
-            embed=5, input=5, output=5, compile=True, use_gpu=False,
-            gen_limit=50):
-        self._optimizer = optimizer
-        self._gc = gc
-        self._hidden = hidden
-        self._embed = embed
-        self._input = input
-        self._output = output
-        self._src_voc = src_voc
-        self._trg_voc = trg_voc
-        self._use_gpu = use_gpu
-        self._gen_lim = gen_limit
-        self._xp = cuda.cupy if use_gpu else np
-        if compile:
-            self._model = self.__init_model()
-        
-    """ 
-    Publics 
-    """ 
-    def init_params(self):
-        if self._use_gpu: self._model.to_cpu()
-        UF.init_model_parameters(self._model, -0.08, 0.08)
-        if self._use_gpu: self._model.to_gpu()
-  
-    def setup_optimizer(self):
-        self._optimizer.setup(self._model)
 
-    def train(self, src_batch, trg_batch):
-        return self.__forward_training(src_batch, trg_batch)
-    
-    def decay_lr(self, decay_factor):
-        self._optimizer.lr /= decay_factor
-    
-    def update(self, loss):
-        self._optimizer.zero_grads()
-        loss.backward()
-        loss.unchain_backward()
-        self._optimizer.clip_grads(self._gc)
-        self._optimizer.update()
-    
-    def decode(self, src_batch):
-        return self.__forward_testing(src_batch)
-
+class EncoderDecoder(DeepSMT):
     def save(self, fp):
         self._src_voc.save(fp)
         self._trg_voc.save(fp)
@@ -81,7 +35,7 @@ class EncoderDecoder:
         self._input   = int(next(fp))
         self._output  = int(next(fp))
         self._hidden  = int(next(fp))
-        self._model   = self.__init_model()
+        self._model   = self._init_model()
         fp = ModelFile(fp)
         if self._use_gpu: self._model = self._model.to_cpu()
         fp.read_embed(self._model.w_xi)
@@ -94,14 +48,11 @@ class EncoderDecoder:
         fp.read_linear(self._model.w_qq)
         if self._use_gpu: self._model = self._model.to_gpu()
 
-    def get_vocabularies(self):
-        return self._src_voc, self._trg_voc
-
     """ 
     Privates 
     """
     # Architecture from: https://github.com/odashi/chainer_examples
-    def __init_model(self):
+    def _construct_model(self):
         I, O = self._input, self._output
         H, E = self._hidden, self._embed
         model = FunctionSet(
@@ -116,18 +67,17 @@ class EncoderDecoder:
             w_yq = F.EmbedID(O, 4 * H),
             w_qq = F.Linear(H, 4* H)
         )
-        return model.to_gpu() if self._use_gpu else model
+        return model
 
-
-    def __forward_training(self, src_batch, trg_batch):
-        s_c, s_p = self.__encode(src_batch)
-        return self.__decode_training(s_c, s_p, trg_batch)
+    def _forward_training(self, src_batch, trg_batch):
+        s_c, s_p = self._encode(src_batch)
+        return self._decode_training(s_c, s_p, trg_batch)
          
-    def __forward_testing(self, src_batch):
-        s_c, s_p = self.__encode(src_batch)
-        return self.__decode_testing(s_c, s_p, len(src_batch))
+    def _forward_testing(self, src_batch):
+        s_c, s_p = self._encode(src_batch)
+        return self._decode_testing(s_c, s_p, len(src_batch))
 
-    def __encode(self, src_batch):
+    def _encode(self, src_batch):
         xp, hidden = self._xp, self._hidden
         m          = self._model
         row_len    = len(src_batch)
@@ -142,7 +92,7 @@ class EncoderDecoder:
             s_c, s_p = F.lstm(s_c, m.w_ip(s_i) + m.w_pp(s_p))
         return s_c, s_p
 
-    def __decode_training(self, c, p, trg_batch):
+    def _decode_training(self, c, p, trg_batch):
         # Decoding (Producing target tokens & counting loss function)
         xp, m      = self._xp, self._model
         row_len    = len(trg_batch)
@@ -163,7 +113,7 @@ class EncoderDecoder:
                 output_l[i].append(output[i])
         return output_l, accum_loss
 
-    def __decode_testing(self, c, p, trg_len):
+    def _decode_testing(self, c, p, trg_len):
         xp  = self._xp
         GEN = self._gen_lim
         m   = self._model

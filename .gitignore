@@ -1,4 +1,5 @@
 /data*
+/out
 *.pyc
 *.log
 *.out
