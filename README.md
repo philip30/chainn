@@ -11,7 +11,7 @@ To train a model using a default setting you can specify the command bellow:
 
 To use the model to decode the test file simply run the command bellow:
 
-```python3 --init_model [MODEL_OUT] < [TEST_FILE]```
+```python3 decoder.py --init_model [MODEL_OUT] < [TEST_FILE]```
 
 # Reference
 This repository is inspired from [chainer_examples](https://github.com/odashi/chainer_examples) but written in more object oriented fashioned.
