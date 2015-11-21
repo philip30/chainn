@@ -107,7 +107,6 @@ def convert_to_id(batch, src_voc, trg_voc):
     for src, trg in batch:
         swids  = [SRC[x] for x in src]
         swids.append(SRC[EOS])
-        print(swids)
         src_batch.append(swids)
         twids  = [TRG[x] for x in trg]
         twids.append(TRG[EOS])
