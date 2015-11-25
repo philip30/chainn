@@ -5,10 +5,10 @@ import util.functions as UF
 from chainer import FunctionSet, Variable, optimizers, cuda
 from util.io import ModelFile
 from util.vocabulary import Vocabulary
-from .deepsmt import DeepSMT
+from .nmt import NMT
 
 
-class EncoderDecoder(DeepSMT):
+class EncoderDecoder(NMT):
     def save(self, fp):
         self._src_voc.save(fp)
         self._trg_voc.save(fp)
@@ -18,14 +18,7 @@ class EncoderDecoder(DeepSMT):
         print(self._hidden, file=fp)
         fp = ModelFile(fp)
         if self._use_gpu: self._model = self._model.to_cpu()
-        fp.write_embed(self._model.w_xi)
-        fp.write_linear(self._model.w_ip)
-        fp.write_linear(self._model.w_pp)
-        fp.write_linear(self._model.w_pq)
-        fp.write_linear(self._model.w_qj)
-        fp.write_linear(self._model.w_jy)
-        fp.write_embed(self._model.w_yq)
-        fp.write_linear(self._model.w_qq)
+        self._save_parameter(fp)
         if self._use_gpu: self._model = self._model.to_gpu()
    
     def load(self, fp):
@@ -38,14 +31,7 @@ class EncoderDecoder(DeepSMT):
         self._model   = self._init_model()
         fp = ModelFile(fp)
         if self._use_gpu: self._model = self._model.to_cpu()
-        fp.read_embed(self._model.w_xi)
-        fp.read_linear(self._model.w_ip)
-        fp.read_linear(self._model.w_pp)
-        fp.read_linear(self._model.w_pq)
-        fp.read_linear(self._model.w_qj)
-        fp.read_linear(self._model.w_jy)
-        fp.read_embed(self._model.w_yq)
-        fp.read_linear(self._model.w_qq)
+        self._load_parameter(fp)
         if self._use_gpu: self._model = self._model.to_gpu()
 
     """ 
@@ -70,12 +56,12 @@ class EncoderDecoder(DeepSMT):
         return model
 
     def _forward_training(self, src_batch, trg_batch):
-        s_c, s_p = self._encode(src_batch)
-        return self._decode_training(s_c, s_p, trg_batch)
+        h = self._encode(src_batch)
+        return self._decode_training(h, trg_batch)
          
     def _forward_testing(self, src_batch):
-        s_c, s_p = self._encode(src_batch)
-        return self._decode_testing(s_c, s_p, len(src_batch))
+        h = self._encode(src_batch)
+        return self._decode_testing(h, len(src_batch))
 
     def _encode(self, src_batch):
         xp, hidden = self._xp, self._hidden
@@ -92,8 +78,9 @@ class EncoderDecoder(DeepSMT):
             s_c, s_p = F.lstm(s_c, m.w_ip(s_i) + m.w_pp(s_p))
         return s_c, s_p
 
-    def _decode_training(self, c, p, trg_batch):
+    def _decode_training(self, h, trg_batch):
         # Decoding (Producing target tokens & counting loss function)
+        c, p       = h_
         xp, m      = self._xp, self._model
         row_len    = len(trg_batch)
         col_len    = len(trg_batch[0])
@@ -113,11 +100,12 @@ class EncoderDecoder(DeepSMT):
                 output_l[i].append(output[i])
         return output_l, accum_loss
 
-    def _decode_testing(self, c, p, trg_len):
-        xp  = self._xp
-        GEN = self._gen_lim
-        m   = self._model
-        output_l = [[] for i in range(trg_len)]
+    def _decode_testing(self, h, batch_size):
+        c, p = h
+        xp   = self._xp
+        GEN  = self._gen_lim
+        m    = self._model
+        output_l = [[] for i in range(batch_size)]
         EOS = self._trg_voc[self._trg_voc.get_eos()]
         all_done = set()
         # Decoding
@@ -129,15 +117,37 @@ class EncoderDecoder(DeepSMT):
             outvar = Variable(xp.array(output, dtype=np.int32))
             s_c, s_q = F.lstm(s_c, m.w_yq(outvar) + m.w_qq(s_q))
 
-            for i in range(trg_len):
+            for i in range(batch_size):
                 output_l[i].append(output[i])
                 # Whether we have finished translate this particular sentence
                 if i not in all_done and output[i] == EOS:
                     all_done.add(i)
             
             # We have finished all the sentences in this batch
-            if len(all_done) == trg_len:
+            if len(all_done) == batch_size:
                 break
             
         return output_l
+    
+    def _save_parameter(self, fp):
+        m = self._model
+        fp.write_embed(m.w_xi)
+        fp.write_linear(m.w_ip)
+        fp.write_linear(m.w_pp)
+        fp.write_linear(m.w_pq)
+        fp.write_linear(m.w_qj)
+        fp.write_linear(m.w_jy)
+        fp.write_embed(m.w_yq)
+        fp.write_linear(m.w_qq)
 
+    def _load_parameter(self, fp):
+        m = self._model
+        fp.read_embed(m.w_xi)
+        fp.read_linear(m.w_ip)
+        fp.read_linear(m.w_pp)
+        fp.read_linear(m.w_pq)
+        fp.read_linear(m.w_qj)
+        fp.read_linear(m.w_jy)
+        fp.read_embed(m.w_yq)
+        fp.read_linear(m.w_qq)
+    

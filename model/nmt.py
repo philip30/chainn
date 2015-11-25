@@ -3,7 +3,7 @@ import util.functions as UF
 
 from chainer import optimizers, cuda
 
-class DeepSMT:
+class NMT:
     """ 
     Constructor 
     """

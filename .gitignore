@@ -6,3 +6,4 @@
 *.temp
 *.model
 .python-version
+.nfs*

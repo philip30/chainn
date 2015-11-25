@@ -145,7 +145,7 @@ def parse_args():
     parser.add_argument("--save_len", type=positive_decimal, default=def_savelen)
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",choices=["encdec","att"], default="encdec")
+    parser.add_argument("--model",choices=["encdec","attn"], default="encdec")
     
     return parser.parse_args()
 
