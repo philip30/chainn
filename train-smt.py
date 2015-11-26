@@ -79,8 +79,8 @@ def main():
             UF.trace("Trained %d: %f" % (trained, loss.data))
 
         # Decaying learning rate
-        if epoch > 8:
-            model.decay_lr(args.decay_factor)
+        #if epoch > 8:
+        #    model.decay_lr(args.decay_factor)
 
         # saving model
         if (save_ctr + 1) % save_len == 0:
