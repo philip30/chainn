@@ -118,7 +118,7 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
     for index in range(len(src)):
         source   = SRC.str_rpr(src[index])
         ref      = TRG.str_rpr(trg[index])
-        out      = TRG.str_rpr(output[index])
+        out      = TRG.str_rpr(output["decode"][index])
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
 

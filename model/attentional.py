@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import chainer.functions as F
 import util.functions as UF
@@ -5,6 +6,7 @@ import util.functions as UF
 from chainer import FunctionSet, Variable, optimizers, cuda
 from util.io import ModelFile
 from util.vocabulary import Vocabulary
+from util.output import DecodingOutput
 from .encdec import EncoderDecoder
 
 class Attentional(EncoderDecoder):
@@ -62,13 +64,14 @@ class Attentional(EncoderDecoder):
         # Return the list of hidden state
         return h
 
-    def _decode(self, h, batch_size, generation_limit, update_callback=lambda: False):
+    def _decode(self, h, batch_size, generation_limit, update_callback, is_training):
         xp, hidden = self._xp, self._hidden
         m          = self._model
         row_len    = batch_size
         col_len    = generation_limit
         get_data   = lambda x: UF.to_cpu(self._use_gpu, x)
         TRG        = self._trg_voc
+        save_alpha = not is_training
 
         # Precompute U_a * h_j
         UaH = []
@@ -77,11 +80,12 @@ class Attentional(EncoderDecoder):
 
         # Decoding
         h1f, h1b = h[0]
-        s        = F.tanh(m.w_Ws(h1b))
-        c        = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
+        s        = F.tanh(m.w_Ws(h1b)) # initial state
+        c        = Variable(xp.zeros((row_len, hidden), dtype=np.float32)) #initial lstm cell state value
         y        = Variable(xp.array([TRG["<s>"] for _ in range(row_len)], dtype=np.int32))
-        output_l = [[] for _ in range(row_len)]
-        y_state  = {"y": y}
+        output_l = [[] for _ in range(row_len)] # output list
+        output_a = [[] for _ in range(row_len)] # alignment
+        y_state  = {"y": y}                     # state containing last translated word
 
         for j in range(col_len):
             # Calculating e
@@ -91,14 +95,20 @@ class Attentional(EncoderDecoder):
                 e_ij   = F.exp(m.w_va(F.tanh(m.w_Wa(s) + UaH[i])))
                 e.append(e_ij)
                 sum_e += e_ij
+
             # Calculating alignment model
             s_f = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
             s_b = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
+            alpha = []
             for i in range(len(h)):
                 alpha_ij = e[i] / sum_e
                 h_f, h_b = h[i]
-                s_f += get_data(alpha_ij.data)[0][0] * h_f
-                s_b += get_data(alpha_ij.data)[0][0] * h_b
+                s_f += F.reshape(F.batch_matmul(h_f, alpha_ij), (row_len, hidden)) # Forward
+                s_b += F.reshape(F.batch_matmul(h_b, alpha_ij), (row_len, hidden)) # Backward
+                
+                if save_alpha:
+                    alpha.append(get_data(alpha_ij.data))
+
             # Generate next word
             c, s = F.lstm(c, m.w_U0(s) + m.w_V0(y_state["y"]) + m.w_C0F(s_f) + m.w_C0B(s_b))
             r_y  = m.w_ti(s)
@@ -107,6 +117,10 @@ class Attentional(EncoderDecoder):
             for i in range(len(out)):
                 output_l[i].append(out[i])
 
+                if save_alpha:
+                    output_a[i].append(alpha[i])
+            
+
             # Calculate entropy or if it is testing,
             # Break when every sentence has "</s>" at ending
             break_signal = update_callback(j, r_y, out, output_l, y_state)
@@ -114,7 +128,7 @@ class Attentional(EncoderDecoder):
             if break_signal:
                 break
         
-        return output_l
+        return DecodingOutput(decoding=output_l, alignment=output_a)
     
     def _save_parameter(self, fp):
         m = self._model

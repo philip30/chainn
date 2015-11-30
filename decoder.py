@@ -31,14 +31,14 @@ def main():
         # ascendingly.
         for src in UG.same_len_batch((args.src,), B, PRE, POST):
             trg = model.decode(src)
-            print_result(trg, TRG)
+            print_result(trg["decode"], TRG)
     else:
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
         for line in sys.stdin:
             line = POST([PRE(line)])
             trg = model.decode(line)
-            print_result(trg, TRG)
+            print_result(trg["decode"], TRG)
 
 def print_result(trg, TRG):
     for result in trg:

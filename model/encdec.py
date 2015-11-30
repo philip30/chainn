@@ -5,6 +5,7 @@ import util.functions as UF
 from chainer import FunctionSet, Variable, optimizers, cuda
 from util.io import ModelFile
 from util.vocabulary import Vocabulary
+from util.output import DecodingOutput
 from .nmt import NMT
 
 
@@ -78,7 +79,7 @@ class EncoderDecoder(NMT):
             s_c, s_p = F.lstm(s_c, m.w_ip(s_i) + m.w_pp(s_p))
         return s_c, s_p
 
-    def _decode(self, h, batch_size, gen_limit, update_callback):
+    def _decode(self, h, batch_size, gen_limit, update_callback, is_training):
         c, p       = h
         xp, m      = self._xp, self._model
         row_len    = batch_size
@@ -101,7 +102,7 @@ class EncoderDecoder(NMT):
             
             s_c, s_q    = F.lstm(s_c, m.w_yq(y_state["y"]) + m.w_qq(s_q))
 
-        return output_l
+        return DecodingOutput(decoding=output_l)
 
     def _update_training(self, j, r_y, y_state, state, trg_batch):
         xp   = self._xp
@@ -140,7 +141,6 @@ class EncoderDecoder(NMT):
         fp.read_embed(m.w_yq)
         fp.read_linear(m.w_qq)
     
-
     """
     Privates
     """
@@ -149,9 +149,9 @@ class EncoderDecoder(NMT):
         # A callback to count cross entropy after y is calculated at j^th target 
         # It returns false because training shouldnt break the loop immediately
         update = lambda j, r_y, out, out_l, y_s: self._update_training(j, r_y, y_s, state, trg_batch)
-        return self._decode(h, len(trg_batch), len(trg_batch[0]), update), state["accum_loss"]
+        return self._decode(h, len(trg_batch), len(trg_batch[0]), update, True), state["accum_loss"]
         
     def __decode_testing(self, h, batch_size):
         update = lambda j, r_y, out, out_l, y_s: self._update_testing(j, out, out_l, y_s)
-        return self._decode(h, batch_size, self._gen_lim, update)
+        return self._decode(h, batch_size, self._gen_lim, update, False)
 
