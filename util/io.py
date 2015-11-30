@@ -35,18 +35,18 @@ class ModelFile:
             self.__read_vector(row, tp)
 
     def write_embed(self, f):
-        self.__write_matrix(f.W)
+        self.__write_matrix(f.W.data)
 
     def write_linear(self, f):
-        self.__write_matrix(f.W)
-        self.__write_vector(f.b)
+        self.__write_matrix(f.W.data)
+        self.__write_vector(f.b.data)
 
     def read_embed(self, f):
-        self.__read_matrix(f.W, float)
+        self.__read_matrix(f.W.data, float)
 
     def read_linear(self, f):
-        self.__read_matrix(f.W, float)
-        self.__read_vector(f.b, float)
+        self.__read_matrix(f.W.data, float)
+        self.__read_vector(f.b.data, float)
 
     def get_file_pointer(self):
         return self.__fp

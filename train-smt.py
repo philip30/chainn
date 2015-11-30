@@ -96,13 +96,13 @@ Utility functions
 """
 def convert_to_id(batch, src_voc, trg_voc):
     SRC, TRG = src_voc, trg_voc
-    max_src = max(len(src) for src, trg in batch)
-    max_trg = max(len(trg) for src, trg in batch)
+#    max_src = max(len(src) for src, trg in batch)
+#    max_trg = max(len(trg) for src, trg in batch)
     src_batch = []
     trg_batch = []
 
     # No stuffing
-    assert(max_src == len(x) and max_trg == len(y) for x, y in batch)
+#    assert(max_src == len(x) and max_trg == len(y) for x, y in batch)
     
     for src, trg in batch:
         swids  = [SRC[x] for x in src]
