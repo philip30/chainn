@@ -109,7 +109,7 @@ class Attentional(EncoderDecoder):
 
             # Calculate entropy or if it is testing,
             # Break when every sentence has "</s>" at ending
-            break_signal = update_callback(j, r_y, out, y_state)
+            break_signal = update_callback(j, r_y, out, output_l, y_state)
             
             if break_signal:
                 break
@@ -122,22 +122,22 @@ class Attentional(EncoderDecoder):
         row_len = len(trg_batch)
         # A callback to count cross entropy after y is calculated at j^th target 
         # It returns false because training shouldnt break the loop immediately
-        def update_callback(j, r_y, out, y_state, state):
+        def update_callback(j, r_y, out, y_state, output_l, state):
             s_t  = Variable(xp.array([trg_batch[i][j] for i in range(row_len)], dtype=np.int32))
             loss = F.softmax_cross_entropy(r_y, s_t)
             state["accum_loss"] += loss
             y_state["y"] = s_t
             return False
-        update = lambda x, y, z, w: update_callback(x,y,z,w,state)
+        update = lambda x, y, z, w, k: update_callback(x,y,z,w,k,state)
          
         return self._decode(h, len(trg_batch), len(trg_batch[0]), update), state["accum_loss"]
         
     def _decode_testing(self, h, batch_size):
         xp  = self._xp
         EOS = self._trg_voc[self._trg_voc.get_eos()]
-        def update_callback(j, r_y, out, y_state):
+        def update_callback(j, r_y, out, output_l, y_state):
             y_state["y"] = Variable(xp.array(out, dtype=np.int32))
-            return all(out[i][j] == EOS for i in len(out))
+            return all(output_l[i][j] == EOS for i in range(len(output_l)))
         return self._decode(h, batch_size, self._gen_lim, update_callback)
 
     def _save_parameter(self, fp):

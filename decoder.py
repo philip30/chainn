@@ -59,7 +59,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str, required=True)
-    parser.add_argument("--model",choices=["encdec","att"], default="encdec")
+    parser.add_argument("--model",choices=["encdec","attn"], default="attn")
     parser.add_argument("--batch", type=int, default=def_batch)
     parser.add_argument("--src", type=str)
     parser.add_argument("--gen_limit", type=int, default=def_genlimit)
