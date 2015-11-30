@@ -57,11 +57,11 @@ class EncoderDecoder(NMT):
 
     def _forward_training(self, src_batch, trg_batch):
         h = self._encode(src_batch)
-        return self._decode_training(h, trg_batch)
+        return self.__decode_training(h, trg_batch)
          
     def _forward_testing(self, src_batch):
         h = self._encode(src_batch)
-        return self._decode_testing(h, len(src_batch))
+        return self.__decode_testing(h, len(src_batch))
 
     def _encode(self, src_batch):
         xp, hidden = self._xp, self._hidden
@@ -78,57 +78,46 @@ class EncoderDecoder(NMT):
             s_c, s_p = F.lstm(s_c, m.w_ip(s_i) + m.w_pp(s_p))
         return s_c, s_p
 
-    def _decode_training(self, h, trg_batch):
-        # Decoding (Producing target tokens & counting loss function)
-        c, p       = h_
+    def _decode(self, h, batch_size, gen_limit, update_callback):
+        c, p       = h
         xp, m      = self._xp, self._model
-        row_len    = len(trg_batch)
-        col_len    = len(trg_batch[0])
+        row_len    = batch_size
+        col_len    = gen_limit
         output_l   = [[] for i in range(row_len)]
-        accum_loss = 0
         s_c, s_q   = F.lstm(c, m.w_pq(p))
+        y_state    = {"y": None}
         for j in range(col_len):
-            s_j = F.tanh(m.w_qj(s_q))
-            r_y = m.w_jy(s_j)
-            s_t = Variable(xp.array([trg_batch[i][j] for i in range(row_len)], dtype=np.int32))
-            accum_loss += F.softmax_cross_entropy(r_y, s_t)
-            output      = UF.to_cpu(self._use_gpu, r_y.data).argmax(1)
-            s_c, s_q    = F.lstm(s_c, m.w_yq(s_t) + m.w_qq(s_q))
-            
+            s_j      = F.tanh(m.w_qj(s_q))
+            r_y      = m.w_jy(s_j)
+            out      = UF.to_cpu(self._use_gpu, r_y.data).argmax(1)
             # Collecting Output
             for i in range(row_len):
-                output_l[i].append(output[i])
-        return output_l, accum_loss
-
-    def _decode_testing(self, h, batch_size):
-        c, p = h
-        xp   = self._xp
-        GEN  = self._gen_lim
-        m    = self._model
-        output_l = [[] for i in range(batch_size)]
-        EOS = self._trg_voc[self._trg_voc.get_eos()]
-        all_done = set()
-        # Decoding
-        s_c, s_q = F.lstm(c, m.w_pq(p))
-        for j in range(GEN):
-            s_j    = F.tanh(m.w_qj(s_q))
-            r_y    = m.w_jy(s_j)
-            output = UF.to_cpu(self._use_gpu, r_y.data).argmax(1)
-            outvar = Variable(xp.array(output, dtype=np.int32))
-            s_c, s_q = F.lstm(s_c, m.w_yq(outvar) + m.w_qq(s_q))
-
-            for i in range(batch_size):
-                output_l[i].append(output[i])
-                # Whether we have finished translate this particular sentence
-                if i not in all_done and output[i] == EOS:
-                    all_done.add(i)
+                output_l[i].append(out[i])
             
-            # We have finished all the sentences in this batch
-            if len(all_done) == batch_size:
+            break_signal = update_callback(j, r_y, out, output_l, y_state)
+
+            if break_signal:
                 break
             
+            s_c, s_q    = F.lstm(s_c, m.w_yq(y_state["y"]) + m.w_qq(s_q))
+
         return output_l
-    
+
+    def _update_training(self, j, r_y, y_state, state, trg_batch):
+        xp   = self._xp
+        s_t  = Variable(xp.array([trg_batch[i][j] for i in range(len(trg_batch))], dtype=np.int32))
+        loss = F.softmax_cross_entropy(r_y, s_t)
+        state["accum_loss"] += loss
+        y_state["y"] = s_t
+        return False
+
+    def _update_testing(self, j, out, output_l, y_state):
+        xp   = self._xp
+        EOS = self._trg_voc[self._trg_voc.get_eos()]
+        y_state["y"] = Variable(xp.array(out, dtype=np.int32))
+        return all(output_l[i][j] == EOS for i in range(len(output_l)))
+
+
     def _save_parameter(self, fp):
         m = self._model
         fp.write_embed(m.w_xi)
@@ -151,3 +140,18 @@ class EncoderDecoder(NMT):
         fp.read_embed(m.w_yq)
         fp.read_linear(m.w_qq)
     
+
+    """
+    Privates
+    """
+    def __decode_training(self, h, trg_batch):
+        state   = {"accum_loss": 0}
+        # A callback to count cross entropy after y is calculated at j^th target 
+        # It returns false because training shouldnt break the loop immediately
+        update = lambda j, r_y, out, out_l, y_s: self._update_training(j, r_y, y_s, state, trg_batch)
+        return self._decode(h, len(trg_batch), len(trg_batch[0]), update), state["accum_loss"]
+        
+    def __decode_testing(self, h, batch_size):
+        update = lambda j, r_y, out, out_l, y_s: self._update_testing(j, out, out_l, y_s)
+        return self._decode(h, batch_size, self._gen_lim, update)
+
