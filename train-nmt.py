@@ -15,12 +15,12 @@ from util.vocabulary import Vocabulary as Vocab
 from chainer import optimizers
 
 # Default parameters
-def_embed      = 256
-def_hidden     = 512
+def_embed      = 128
+def_hidden     = 128
 def_batchsize  = 64
-def_input      = 32768
-def_output     = 32768
-def_epoch      = 100
+def_input      = 10000
+def_output     = 10000
+def_epoch      = 10
 def_lr         = 0.01
 def_decay      = 1.2     # LR = 80% * LR
 def_savelen    = 1

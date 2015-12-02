@@ -5,6 +5,7 @@ import argparse
 
 import util.functions as UF
 import util.generators as UG
+from util.output import AlignmentVisualizer
 
 # default parameter
 def_batch    = 64
@@ -13,6 +14,7 @@ def_genlimit = 50
 def main():
     # Preparations
     args  = parse_args()
+    align_visualizer = AlignmentVisualizer(args.align_out)
     
     # Loading model
     UF.trace("Loading model:", args.init_model)
@@ -25,6 +27,7 @@ def main():
     B          = args.batch
     PRE        = lambda x: x.strip().lower().split()
     POST       = lambda x: convert_to_id(x, SRC)
+    print_alignment = lambda x, y, z: align_visualizer.print(x, y, z, SRC, TRG)
     if args.src:
         # Batched decoding
         # Note that to get a correct order the src must be sorted according to its length
@@ -32,6 +35,7 @@ def main():
         for src in UG.same_len_batch((args.src,), B, PRE, POST):
             trg = model.decode(src)
             print_result(trg["decode"], TRG)
+            print_alignment(trg["alignment"], src, trg["decode"])
     else:
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
@@ -39,6 +43,10 @@ def main():
             line = POST([PRE(line)])
             trg = model.decode(line)
             print_result(trg["decode"], TRG)
+            print_alignment(trg["alignment"], line, trg["decode"])
+    
+    # Closing
+    align_visualizer.close()
 
 def print_result(trg, TRG):
     for result in trg:
@@ -63,6 +71,7 @@ def parse_args():
     parser.add_argument("--batch", type=int, default=def_batch)
     parser.add_argument("--src", type=str)
     parser.add_argument("--gen_limit", type=int, default=def_genlimit)
+    parser.add_argument("--align_out", type=str)
     return parser.parse_args()
 
 if __name__ == "__main__":

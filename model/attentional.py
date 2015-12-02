@@ -99,7 +99,7 @@ class Attentional(EncoderDecoder):
             # Calculating alignment model
             s_f = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
             s_b = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
-            alpha = []
+            alpha = [[] for _ in range(row_len)]
             for i in range(len(h)):
                 alpha_ij = e[i] / sum_e
                 h_f, h_b = h[i]
@@ -107,16 +107,17 @@ class Attentional(EncoderDecoder):
                 s_b += F.reshape(F.batch_matmul(h_b, alpha_ij), (row_len, hidden)) # Backward
                 
                 if save_alpha:
-                    alpha.append(get_data(alpha_ij.data))
+                    for k in range(row_len):
+                        alpha[k].append(get_data(alpha_ij.data)[k][0])
 
             # Generate next word
             c, s = F.lstm(c, m.w_U0(s) + m.w_V0(y_state["y"]) + m.w_C0F(s_f) + m.w_C0B(s_b))
-            r_y  = m.w_ti(s)
+            r_y  = self._dictionary_consideration(m, m.w_ti(s))
+
             out  = get_data(r_y.data).argmax(1)
             
             for i in range(len(out)):
                 output_l[i].append(out[i])
-
                 if save_alpha:
                     output_a[i].append(alpha[i])
             
@@ -128,7 +129,7 @@ class Attentional(EncoderDecoder):
             if break_signal:
                 break
         
-        return DecodingOutput(decoding=output_l, alignment=output_a)
+        return DecodingOutput(decode=output_l, alignment=output_a)
     
     def _save_parameter(self, fp):
         m = self._model

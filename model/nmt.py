@@ -10,7 +10,7 @@ class NMT:
     def __init__(self, src_voc=None, trg_voc=None,\
             optimizer=optimizers.SGD(), gc=10, hidden=5, \
             embed=5, input=5, output=5, compile=True, use_gpu=False,
-            gen_limit=50):
+            gen_limit=50, dictionary=None):
         self._optimizer = optimizer
         self._gc = gc
         self._hidden = hidden
@@ -22,9 +22,13 @@ class NMT:
         self._use_gpu = use_gpu
         self._gen_lim = gen_limit
         self._xp = cuda.cupy if use_gpu else np
+        self._dict = None
         if compile:
             self._model = self._init_model()
         
+        if dictionary is not None:
+            self._dict = self.__load_dictionary(dictionary)
+
     """ 
     Publics 
     """ 
@@ -76,4 +80,21 @@ class NMT:
 
     def _forward_testing(self, src_batch):
         raise NotImplementedError()
+
+    def _dictionary_consideration(self, m, y):
+        # No dictionary is specified
+        if self._dict is None:
+            return y
+        else:
+            return y
+
+    def __load_dictionary(self, dict_dir):
+        dct = {}
+        SRC = self._src_voc
+        TRG = self._trg_voc
+        with open(dict_dir) as fp:
+            for line in fp:
+                line = line.strip().split()
+                dct[SRC[line[0]], TRG[line[1]]] = float(line[2])
+        return dct
 

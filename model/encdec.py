@@ -89,7 +89,7 @@ class EncoderDecoder(NMT):
         y_state    = {"y": None}
         for j in range(col_len):
             s_j      = F.tanh(m.w_qj(s_q))
-            r_y      = m.w_jy(s_j)
+            r_y      = self._dictionary_consideration(m, m.w_jy(s_j))
             out      = UF.to_cpu(self._use_gpu, r_y.data).argmax(1)
             # Collecting Output
             for i in range(row_len):
@@ -102,7 +102,7 @@ class EncoderDecoder(NMT):
             
             s_c, s_q    = F.lstm(s_c, m.w_yq(y_state["y"]) + m.w_qq(s_q))
 
-        return DecodingOutput(decoding=output_l)
+        return DecodingOutput(decode=output_l)
 
     def _update_training(self, j, r_y, y_state, state, trg_batch):
         xp   = self._xp
@@ -117,7 +117,6 @@ class EncoderDecoder(NMT):
         EOS = self._trg_voc[self._trg_voc.get_eos()]
         y_state["y"] = Variable(xp.array(out, dtype=np.int32))
         return all(output_l[i][j] == EOS for i in range(len(output_l)))
-
 
     def _save_parameter(self, fp):
         m = self._model
