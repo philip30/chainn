@@ -60,16 +60,18 @@ def main():
     save_len   = args.save_len
     SRC.fill_from_file(args.src)
     TRG.fill_from_file(args.trg)
+    data_batch = list(UG.same_len_batch((SC, TC), B, PRE, POST))
     for epoch in range(EP):
         model.setup_optimizer()
         trained = 0
         # Training from the corpus
         UF.trace("Starting Epoch", epoch+1)
-        for src, trg in UG.same_len_batch((SC, TC), B, PRE, POST):
+        for src, trg in data_batch:
             output, loss = model.train(src, trg)
+            
             accum_loss  += loss
             report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
-                
+        
             # Run truncated BPTT
             if (bp_ctr+1) % bp_len == 0:
                 model.update(accum_loss)
