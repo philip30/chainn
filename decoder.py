@@ -28,11 +28,13 @@ def main():
     PRE        = lambda x: x.strip().lower().split()
     POST       = lambda x: convert_to_id(x, SRC)
     print_alignment = lambda x, y, z: align_visualizer.print(x, y, z, SRC, TRG)
+
     if args.src:
         # Batched decoding
         # Note that to get a correct order the src must be sorted according to its length
         # ascendingly.
-        for src in UG.same_len_batch((args.src,), B, PRE, POST):
+        data_batch = list(UG.same_len_batch((args.src,), B, PRE, POST))
+        for src in data_batch:
             trg = model.decode(src)
             print_result(trg["decode"], TRG)
             print_alignment(trg["alignment"], src, trg["decode"])
@@ -40,7 +42,7 @@ def main():
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
         for line in sys.stdin:
-            line = POST([PRE(line)])
+            line = POST([[PRE(line)]])
             trg = model.decode(line)
             print_result(trg["decode"], TRG)
             print_alignment(trg["alignment"], line, trg["decode"])
@@ -49,16 +51,15 @@ def main():
     align_visualizer.close()
 
 def print_result(trg, TRG):
-    for result in trg:
+    for i, result in enumerate(trg):
         print(TRG.str_rpr(result))
 
 def convert_to_id(batch, src_voc):
     SRC = src_voc
-    max_src = max(len(src) for src in batch)
     src_batch = []
     EOS = SRC.get_eos()
     for src in batch:
-        swids  = [SRC[x] for x in src]
+        swids  = [SRC[x] for x in src[0]]
         swids.append(SRC[EOS])
         src_batch.append(swids)
     return src_batch

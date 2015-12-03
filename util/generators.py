@@ -31,13 +31,14 @@ def same_len_batch(f, batchsize, pre_process=identity, post_process=identity):
     fp = list(map(lambda x:open(x, "r"), f))
     data = defaultdict(lambda:[])
     for lines in zip(*fp):
-        lines = tuple(map(lambda x: pre_process(x), lines))
+        lines = list(map(lambda x: pre_process(x), lines))
         key = tuple(map(lambda x: len(x), lines))
         
         data[key].append(lines)
+        
     list(map(lambda x: x.close(), fp))
 
-    for count, sents in data.items():
+    for count, sents in sorted(data.items(), key=lambda x: x[0]):
         j = 0
         while j < len(sents):
             batch = sents[j:min(batchsize+j, len(sents))]
