@@ -89,7 +89,7 @@ class EncoderDecoder(NMT):
         y_state    = {"y": None}
         for j in range(col_len):
             s_j      = F.tanh(m.w_qj(s_q))
-            r_y      = self._dictionary_consideration(m, m.w_jy(s_j))
+            r_y      = m.w_jy(s_j)
             out      = UF.to_cpu(self._use_gpu, r_y.data).argmax(1)
             # Collecting Output
             for i in range(row_len):

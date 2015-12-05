@@ -1,5 +1,6 @@
 /data*
 /out
+/temp
 *.pyc
 *.log
 *.out

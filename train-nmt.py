@@ -39,7 +39,7 @@ def main():
     model = UF.select_model(args.model)(optimizer=optimizer, gc=grad_clip,\
             hidden=args.hidden, embed=args.embed, input=args.input,\
             use_gpu=not args.use_cpu,\
-            output=args.output, src_voc=Vocab(EOS), trg_voc=Vocab(EOS))
+            output=args.output, src_voc=Vocab(EOS), trg_voc=Vocab(EOS), dictionary=args.dictionary)
 
     if args.init_model is not None:
         UF.trace("Loading model:", args.init_model)
@@ -148,7 +148,7 @@ def parse_args():
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
     parser.add_argument("--model",choices=["encdec","attn"], default="attn")
-    
+    parser.add_argument("--dictionary", type=str, default=None)
     return parser.parse_args()
 
 if __name__ == "__main__":

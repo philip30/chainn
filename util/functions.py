@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 from . import globalvars
 from chainer import cuda
+from numpy.random import RandomState
 
 # Utility
 def trace(*args, debug_level=0):
@@ -31,9 +32,12 @@ def select_wrapper(use_gpu):
         return cuda.cupy
 
 # SMT decoder model
-def init_model_parameters(model, minimum=-0.1, maximum=0.1):
+def init_model_parameters(model, minimum=-0.1, maximum=0.1, seed=0):
+    prng = RandomState(seed)
     for param in model.parameters:
-        param[:] = np.random.uniform(minimum, maximum, param.shape)
+        param[:] = prng.uniform(minimum, maximum, param.shape)
+    print(model.w_E.W.data)
+
 
 def select_model(model):
     from model.encdec import EncoderDecoder

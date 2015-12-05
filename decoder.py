@@ -18,7 +18,7 @@ def main():
     
     # Loading model
     UF.trace("Loading model:", args.init_model)
-    model = UF.select_model(args.model)(use_gpu=not args.use_cpu)
+    model = UF.select_model(args.model)(use_gpu=not args.use_cpu, dictionary=args.dictionary)
     with open(args.init_model) as fp:
         model.load(fp)
     
@@ -73,6 +73,7 @@ def parse_args():
     parser.add_argument("--src", type=str)
     parser.add_argument("--gen_limit", type=int, default=def_genlimit)
     parser.add_argument("--align_out", type=str)
+    parser.add_argument("--dictionary", type=str, default=None)
     return parser.parse_args()
 
 if __name__ == "__main__":

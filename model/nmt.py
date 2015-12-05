@@ -1,7 +1,8 @@
 import numpy as np
 import util.functions as UF
 
-from chainer import optimizers, cuda
+from chainer import optimizers, cuda, Variable
+from collections import defaultdict
 
 class NMT:
     """ 
@@ -34,7 +35,7 @@ class NMT:
     """ 
     def init_params(self):
         if self._use_gpu: self._model.to_cpu()
-        UF.init_model_parameters(self._model, -0.08, 0.08)
+        UF.init_model_parameters(self._model, -0.08, 0.08, seed=1) # special seed number
         if self._use_gpu: self._model.to_gpu()
   
     def setup_optimizer(self):
@@ -81,20 +82,30 @@ class NMT:
     def _forward_testing(self, src_batch):
         raise NotImplementedError()
 
-    def _dictionary_consideration(self, m, y):
+    def _dictionary_consideration(self, src, y, alpha):
+        SRC = self._src_voc
+        TRG = self._trg_voc
+        dct = self._dict
+        xp  = self._xp
         # No dictionary is specified
         if self._dict is None:
             return y
-        else:
-            return y
+        score = xp.zeros((len(src), self._output), dtype=np.float32)
+        for src_i, sent in enumerate(src):
+            for word_i, src_word in enumerate(sent):
+                for trg_word, dct_prob in dct[src_word].items():
+                    score[src_i][trg_word] += alpha[src_i][word_i] * dct_prob
+        score = Variable(score)
+        ret = y + score
+        return ret
 
     def __load_dictionary(self, dict_dir):
-        dct = {}
+        dct = defaultdict(lambda:defaultdict(lambda: 0))
         SRC = self._src_voc
         TRG = self._trg_voc
         with open(dict_dir) as fp:
             for line in fp:
                 line = line.strip().split()
-                dct[SRC[line[0]], TRG[line[1]]] = float(line[2])
+                dct[SRC[line[0]]][TRG[line[1]]] = float(line[2])
         return dct
 

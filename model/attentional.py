@@ -62,7 +62,7 @@ class Attentional(EncoderDecoder):
             # concatenating them
             h.append((s_pf, s_pb))
         # Return the list of hidden state
-        return h
+        return h, src_batch
 
     def _decode(self, h, batch_size, generation_limit, update_callback, is_training):
         xp, hidden = self._xp, self._hidden
@@ -71,7 +71,8 @@ class Attentional(EncoderDecoder):
         col_len    = generation_limit
         get_data   = lambda x: UF.to_cpu(self._use_gpu, x)
         TRG        = self._trg_voc
-        save_alpha = not is_training
+        save_alpha = True
+        h, src     = h
 
         # Precompute U_a * h_j
         UaH = []
@@ -97,22 +98,22 @@ class Attentional(EncoderDecoder):
                 sum_e += e_ij
 
             # Calculating alignment model
-            s_f = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
-            s_b = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
+            c_f = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
+            c_b = Variable(xp.zeros((row_len, hidden), dtype=np.float32))
             alpha = [[] for _ in range(row_len)]
             for i in range(len(h)):
                 alpha_ij = e[i] / sum_e
                 h_f, h_b = h[i]
-                s_f += F.reshape(F.batch_matmul(h_f, alpha_ij), (row_len, hidden)) # Forward
-                s_b += F.reshape(F.batch_matmul(h_b, alpha_ij), (row_len, hidden)) # Backward
+                c_f += F.reshape(F.batch_matmul(h_f, alpha_ij), (row_len, hidden)) # Forward
+                c_b += F.reshape(F.batch_matmul(h_b, alpha_ij), (row_len, hidden)) # Backward
                 
                 if save_alpha:
                     for k in range(row_len):
                         alpha[k].append(get_data(alpha_ij.data)[k][0])
 
             # Generate next word
-            c, s = F.lstm(c, m.w_U0(s) + m.w_V0(y_state["y"]) + m.w_C0F(s_f) + m.w_C0B(s_b))
-            r_y  = self._dictionary_consideration(m, m.w_ti(s))
+            c, s = F.lstm(c, m.w_U0(s) + m.w_V0(y_state["y"]) + m.w_C0F(c_f) + m.w_C0B(c_b))
+            r_y  = self._dictionary_consideration(src, m.w_ti(s), alpha)
 
             out  = get_data(r_y.data).argmax(1)
             
