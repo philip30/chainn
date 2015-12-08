@@ -38,8 +38,8 @@ def init_model_parameters(model, minimum=-0.1, maximum=0.1, seed=0):
         param[:] = prng.uniform(minimum, maximum, param.shape)
 
 def select_model(model):
-    from model.encdec import EncoderDecoder
-    from model.attentional import Attentional
+    from chainn.model import EncoderDecoder
+    from chainn.model import Attentional
     
     if model == "encdec":
         return EncoderDecoder

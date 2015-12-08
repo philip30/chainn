@@ -1,13 +1,21 @@
 import sys
 import numpy as np
 import chainer.functions as F
-import util.functions as UF
 
+# Chainer
 from chainer import FunctionSet, Variable, optimizers, cuda
-from util.io import ModelFile
-from util.vocabulary import Vocabulary
-from util.output import DecodingOutput
-from .encdec import EncoderDecoder
+
+# Chainn
+from chainn import functions as UF
+from chainn.model import EncoderDecoder
+from chainn.util.io import ModelFile
+from chainn.util.output import DecodingOutput
+from chainn.util import Vocabulary
+
+# By Philip Arthur (philip.arthur30@gmail.com)
+# This program is an implementation of NEURAL MACHINE TRANSLATION BY JOINTLY LEARNING TO ALIGN AND TRANSLATE
+# (Bahdanau et al., 2015)
+# http://arxiv.org/pdf/1409.0473v6.pdf
 
 class Attentional(EncoderDecoder):
     # Architecture from: https://github.com/odashi/chainer_examples
@@ -121,7 +129,6 @@ class Attentional(EncoderDecoder):
                 if save_alpha:
                     output_a[i].append(alpha[i])
             
-
             # Calculate entropy or if it is testing,
             # Break when every sentence has "</s>" at ending
             break_signal = update_callback(j, r_y, out, output_l, y_state)
@@ -168,4 +175,4 @@ class Attentional(EncoderDecoder):
         fp.read_linear(m.w_ti)
         if self._dict is not None:
             self._dict = self._load_dictionary(self._dict)
-    
+   

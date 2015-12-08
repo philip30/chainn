@@ -1,13 +1,20 @@
 import numpy as np
 import chainer.functions as F
-import util.functions as UF
 
+# Chainer
 from chainer import FunctionSet, Variable, optimizers, cuda
-from util.io import ModelFile
-from util.vocabulary import Vocabulary
-from util.output import DecodingOutput
-from .nmt import NMT
 
+# Chainn
+from chainn import functions as UF
+from chainn.model import NMT
+from chainn.util import Vocabulary
+from chainn.util.output import DecodingOutput
+from chainn.util.io import ModelFile
+
+# By Philip Arthur (philip.arthur30@gmail.com)
+# This program is an implementation of Sequence to Sequence Learning with Neural Networks
+# (Sutskever et al., 2013)
+# http://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf
 
 class EncoderDecoder(NMT):
     def save(self, fp):

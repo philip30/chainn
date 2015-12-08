@@ -3,9 +3,9 @@
 import sys
 import argparse
 
-import util.functions as UF
-import util.generators as UG
-from util.output import AlignmentVisualizer
+from chainn import functions as UF
+from chainn import generators as UG
+from chainn import output
 
 # default parameter
 def_batch    = 64
@@ -14,7 +14,7 @@ def_genlimit = 50
 def main():
     # Preparations
     args  = parse_args()
-    align_visualizer = AlignmentVisualizer(args.align_out)
+    align_visualizer = output.AlignmentVisualizer(args.align_out)
     
     # Loading model
     UF.trace("Loading model:", args.init_model)
