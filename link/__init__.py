@@ -1,0 +1,2 @@
+from link.linear_interpolation import LinearInterpolation
+

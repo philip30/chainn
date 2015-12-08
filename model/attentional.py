@@ -87,7 +87,6 @@ class Attentional(EncoderDecoder):
         output_l = [[] for _ in range(row_len)] # output list
         output_a = [[] for _ in range(row_len)] # alignment
         y_state  = {"y": y}                     # state containing last translated word
-
         for j in range(col_len):
             # Calculating e
             e     = []
@@ -167,4 +166,6 @@ class Attentional(EncoderDecoder):
         fp.read_linear(m.w_C0F)
         fp.read_linear(m.w_C0B)
         fp.read_linear(m.w_ti)
+        if self._dict is not None:
+            self._dict = self._load_dictionary(self._dict)
     

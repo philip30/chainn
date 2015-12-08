@@ -18,7 +18,7 @@ def main():
     
     # Loading model
     UF.trace("Loading model:", args.init_model)
-    model = UF.select_model(args.model)(use_gpu=not args.use_cpu, dictionary=args.dictionary)
+    model = UF.select_model(args.model)(use_gpu=not args.use_cpu, dictionary=args.dictionary, compile=False)
     with open(args.init_model) as fp:
         model.load(fp)
     

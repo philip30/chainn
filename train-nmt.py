@@ -89,7 +89,6 @@ def main():
             UF.trace("saving model...")
             with open(args.model_out, "w") as fp:
                 model.save(fp)
-        
         gc.collect()
         save_ctr += 1
 

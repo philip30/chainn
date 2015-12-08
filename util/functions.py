@@ -36,8 +36,6 @@ def init_model_parameters(model, minimum=-0.1, maximum=0.1, seed=0):
     prng = RandomState(seed)
     for param in model.parameters:
         param[:] = prng.uniform(minimum, maximum, param.shape)
-    print(model.w_E.W.data)
-
 
 def select_model(model):
     from model.encdec import EncoderDecoder

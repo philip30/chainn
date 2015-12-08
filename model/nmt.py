@@ -23,12 +23,12 @@ class NMT:
         self._use_gpu = use_gpu
         self._gen_lim = gen_limit
         self._xp = cuda.cupy if use_gpu else np
-        self._dict = None
+        self._dict = dictionary
         if compile:
             self._model = self._init_model()
-        
-        if dictionary is not None:
-            self._dict = self.__load_dictionary(dictionary)
+            
+            if dictionary is not None:
+                self._dict = self._load_dictionary(dictionary)
 
     """ 
     Publics 
@@ -87,6 +87,8 @@ class NMT:
         TRG = self._trg_voc
         dct = self._dict
         xp  = self._xp
+#        alpha_max = np.argmax(np.array(alpha), axis=1)
+        
         # No dictionary is specified
         if self._dict is None:
             return y
@@ -95,11 +97,24 @@ class NMT:
             for word_i, src_word in enumerate(sent):
                 for trg_word, dct_prob in dct[src_word].items():
                     score[src_i][trg_word] += alpha[src_i][word_i] * dct_prob
+#            a_max = alpha_max[src_i]
+#            print(a_max)
+#            for trg_word, dct_prob in dct[a_max].items():
+#                score[a_max][trg_word] += alpha[src_i][a_max] * dct_prob
+
+#        print(SRC)
+#        print(TRG)
+#        print("+++SCORE+++")
+#        print(score)
+#        print("+++Y+++")
+#        print(y.data)
         score = Variable(score)
         ret = y + score
+#        print("+++RET+++")
+#        print(ret.data)
         return ret
 
-    def __load_dictionary(self, dict_dir):
+    def _load_dictionary(self, dict_dir):
         dct = defaultdict(lambda:defaultdict(lambda: 0))
         SRC = self._src_voc
         TRG = self._trg_voc
