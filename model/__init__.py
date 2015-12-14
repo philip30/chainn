@@ -1,4 +1,6 @@
-from .nmt import NMT
-from .encdec import EncoderDecoder
-from .attentional import Attentional
-
+from chainn.model.nmt.nmt import NMT
+#from chainn.model.nmt.encdec import EncoderDecoder
+#from chainn.model.nmt.attentional import Attentional
+#from chainn.model.nmt.efattentional import EffectiveAttentional
+from chainn.model.basic.mlp import MLP
+from chainn.model.nlp.rnn_pos import RNNPosTagger

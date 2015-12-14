@@ -1,4 +1,11 @@
-from .functions import vtos, stov
+import chainer
+import numpy as np
+
+from chainer.links.connection.linear import Linear
+from chainer.links.connection.embed_id import EmbedID
+
+from collections import defaultdict
+from chainn.util.functions import vtos, stov
 
 # Copied and modified from https://github.com/odashi/chainer_examples/blob/master/util/model_file.py
 class ModelFile:
@@ -51,4 +58,20 @@ class ModelFile:
     def get_file_pointer(self):
         return self.__fp
 
+    def read_param_list(self, param):
+        for i, item in enumerate(param):
+            if type(item) == Linear:
+                self.read_linear(param[i])
+            elif type(item) == Embed:
+                self.read_embed(param[i])
+            else:
+                raise NotImplementedError(type(item))
 
+    def write_param_list(self, param):
+        for item in param:
+            if type(item) == Linear:
+                self.write_linear(item)
+            elif type(item) == Embed:
+                self.write_embed(item)
+            else:
+                raise NotImplementedError(type(item))

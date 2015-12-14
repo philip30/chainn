@@ -1,8 +1,8 @@
 
-import util.functions
-import util.generators
-import util.output
-from util.vocabulary import Vocabulary as V
+import chainn.util.functions
+import chainn.util.generators
+import chainn.util.output
+from chainn.util.vocabulary import Vocabulary as V
 
 functions = util.functions
 generators = util.generators

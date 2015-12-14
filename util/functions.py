@@ -1,3 +1,4 @@
+
 import sys
 import datetime
 import numpy as np
@@ -11,25 +12,10 @@ def trace(*args, debug_level=0):
         print(datetime.datetime.now(), '...', *args, file=sys.stderr)
         sys.stderr.flush()
 
-def convert_to_GPU(use_gpu, model):
-    if use_gpu:
-        cuda.check_cuda_available()
-        cuda.get_device(0).use()
-        return model.to_gpu()
-    else:
-        return model
-
-def to_cpu(use_gpu, array):
-    if use_gpu:
-        return cuda.to_cpu(array)
-    else:
-        return array
-
-def select_wrapper(use_gpu):
-    if not use_gpu:
-        return np
-    else:
-        return cuda.cupy
+def print_classification(data, trg, file=sys.stdout):
+    data = cuda.to_cpu(data).argmax(1)
+    for x in data:
+        print(trg.tok_rpr(x), file=file)
 
 # SMT decoder model
 def init_model_parameters(model, minimum=-0.1, maximum=0.1, seed=0):
@@ -40,11 +26,16 @@ def init_model_parameters(model, minimum=-0.1, maximum=0.1, seed=0):
 def select_model(model):
     from chainn.model import EncoderDecoder
     from chainn.model import Attentional
-    
+    from chainn.model import EffectiveAttentional
+
     if model == "encdec":
         return EncoderDecoder
-    else:
+    elif model == "attn":
         return Attentional
+    elif model == "efattn":
+        return EffectiveAttentional
+    else:
+        raise Exception("Unknown model:", model)
 
 # Serialization
 def vtos(v, fmt='%.8e'):

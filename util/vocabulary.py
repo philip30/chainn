@@ -2,7 +2,7 @@ from collections import defaultdict
 
 UNK = "<UNK>"
 EOS = "</s>"
-class Vocabulary:
+class Vocabulary(object):
     # Overloading methods
     def __init__(self, EOS=None):
         self._data = defaultdict(lambda: len(self._data))
@@ -62,15 +62,16 @@ class Vocabulary:
         return self._eos
 
     def save(self, fp):
-        print(len(self._data), file=fp)
+        fp.write(len(self._data))
         for word, index in sorted(self._data.items(), key=lambda x:int(x[1])):
-            print(str(index) + "\t" + str(word), file=fp)
+            fp.write(str(index) + "\t" + str(word))
 
     @staticmethod
     def load(fp):
-        size = int(next(fp))
+        size = int(fp.read())
         self = Vocabulary(EOS)
         for i in range(size):
-            index, word = next(fp).strip().split("\t")
+            index, word = fp.read().strip().split("\t")
             self[word] = int(index)
         return self
+
