@@ -1,7 +1,8 @@
-from chainer import ChainList, Variable
 import chainer.functions as F
-import chainer.functions as L
+import chainer.links as L
+
 from chainn import Vocabulary
+from chainer import ChainList, Variable
 
 # Multi Layer Perceptron
 class MLP(ChainList):

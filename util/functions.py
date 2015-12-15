@@ -12,10 +12,19 @@ def trace(*args, debug_level=0):
         print(datetime.datetime.now(), '...', *args, file=sys.stderr)
         sys.stderr.flush()
 
+def print_argmax(data, file=sys.stdout):
+    data = cuda.to_cpu(data).argmax(1)
+    for x in data:
+        print(x, file=file)
+
 def print_classification(data, trg, file=sys.stdout):
     data = cuda.to_cpu(data).argmax(1)
     for x in data:
         print(trg.tok_rpr(x), file=file)
+
+def argmax(data):
+    data = cuda.to_cpu(data).argmax(1)
+    return [x for x in data]
 
 # SMT decoder model
 def init_model_parameters(model, minimum=-0.1, maximum=0.1, seed=0):
@@ -36,13 +45,6 @@ def select_model(model):
         return EffectiveAttentional
     else:
         raise Exception("Unknown model:", model)
-
-# Serialization
-def vtos(v, fmt='%.8e'):
-    return ' '.join(fmt % x for x in v)
-
-def stov(s, tp=float):
-    return [tp(x) for x in s.split()]
 
 # Argparse
 def check_positive(value, cast=float):

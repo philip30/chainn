@@ -6,9 +6,8 @@ import numpy as np
 import chainer
 import chainer.functions as F
 import chainer.links as L
-import mlp
 
-from chainer import Chain, cuda, optimizers, Variable, serializers
+from chainer import Chain, cuda, optimizers, Variable
 
 from chainn import functions as UF
 from chainn.model import MLP
@@ -63,10 +62,11 @@ def main():
         print("Loss:", loss.data, file=sys.stderr)
         print("Accuracy:", model.accuracy.data, file=sys.stderr)
 
-    for i in range(0, len(train), batch_size):
-        x_data = Variable(train[i:i+batch_size])
-        y_data = model.predictor(x_data)
-        UF.print_classification(y_data.data, Y)
+#    # Classifying training data
+#    for i in range(0, len(train), batch_size):
+#        x_data = Variable(train[i:i+batch_size])
+#        y_data = model.predictor(x_data)
+#        UF.print_classification(y_data.data, Y)
 
     UF.trace("Saving model....")
     with ModelFile(open(args.model_out, "w")) as model_out:
