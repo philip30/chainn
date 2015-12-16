@@ -8,10 +8,10 @@ from chainn.model import RNN, LSTMRNN
 from chainn.util import ModelFile
 
 class RNNParallelSequence(object):
-    def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=False, collect_output=False):
+    def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=False, collect_output=False, grow_vocab=1.5):
         self.__opt            = optimizer
         self.__xp             = cuda.cupy if use_gpu else np
-        self.__model          = L.Classifier(load_model(args, X, Y))
+        self.__model          = L.Classifier(load_model(args, X, Y, grow_vocab))
         self.__collect_output = collect_output
 
         if use_gpu: self.__model = self.__model.to_gpu()
@@ -23,7 +23,8 @@ class RNNParallelSequence(object):
         self.__model.predictor.save(fp)
 
     def train(self, x_data, y_data, update=True):
-        accum_loss, accum_acc, output = self._forward(x_data, y_data)
+        if update: self.__model.zerograds()
+        accum_loss, accum_acc, output = self._forward(x_data, y_data, train=update)
         if update:
             accum_loss.backward()
             accum_loss.unchain_backward()
@@ -33,7 +34,8 @@ class RNNParallelSequence(object):
     def predict(self, x_data):
         return self._forward(x_data)
 
-    def _forward(self, x_data, y_data=None):
+    def _forward(self, x_data, y_data=None, train=True):
+        volatile   = "on" if not train else "off"
         xp         = self.__xp
         batch_size = len(x_data)
         src_len    = len(x_data[0])
@@ -43,7 +45,6 @@ class RNNParallelSequence(object):
         if is_train:
             accum_loss = 0
             accum_acc  = 0
-            model.zerograds()
         
         # Forward Computation
         model.predictor.reset_state(xp, batch_size)
@@ -51,10 +52,10 @@ class RNNParallelSequence(object):
         
         # For each word
         for j in range(src_len):
-            words  = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
+            words  = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32), volatile=volatile)
            
             if is_train:
-                labels = Variable(xp.array([y_data[i][j] for i in range(batch_size)], dtype=np.int32))
+                labels = Variable(xp.array([y_data[i][j] for i in range(batch_size)], dtype=np.int32), volatile=volatile)
                 accum_loss += model(words, labels)
                 accum_acc  += model.accuracy
             
@@ -73,7 +74,7 @@ class RNNParallelSequence(object):
     def get_vocabularies(self):
         return self.__model.predictor._src_voc, self.__model.predictor._trg_voc
 
-def load_model(args, X=None, Y=None):
+def load_model(args, X=None, Y=None, grow_vocab=1.5):
     if args.model == "rnn":
         Model = RNN
     elif args.model == "lstm":
@@ -85,5 +86,5 @@ def load_model(args, X=None, Y=None):
     else:
         return Model(X, Y, embed=args.embed, \
                 hidden=args.hidden, depth=args.depth, \
-                input=int(1.5*len(X)), output=len(Y))
+                input=int(grow_vocab*len(X)), output=int(grow_vocab*len(Y)))
 
