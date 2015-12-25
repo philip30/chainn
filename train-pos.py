@@ -6,6 +6,7 @@ import numpy as np
 from collections import defaultdict
 
 import chainer
+import chainer.functions as F
 from chainer import Chain, cuda, optimizers, Variable
 
 from chainn import functions as UF
@@ -14,9 +15,9 @@ from chainn.util import Vocabulary, ModelFile
 
 def parse_args():
     parser = argparse.ArgumentParser("Program for POS-Tagging classification using RNN/LSTM-RNN")
-    parser.add_argument("--hidden", type=int, help="Hidden unit size", default=50)
-    parser.add_argument("--embed", type=int, help="Embedding vector size", default=200)
-    parser.add_argument("--depth", type=int, help="Depth of the network", default=1)
+    parser.add_argument("--hidden", type=int, help="Hidden unit size", default=100)
+    parser.add_argument("--embed", type=int, help="Embedding vector size", default=100)
+    parser.add_argument("--depth", type=int, help="Depth of the network", default=2)
     parser.add_argument("--batch", type=int, help="Minibatch size", default=64)
     parser.add_argument("--epoch", type=int, help="Epoch", default=100)
     parser.add_argument("--model_out", type=str, help="Where the model is saved", required=True)
@@ -38,8 +39,8 @@ def main():
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.AdaGrad(lr=0.01)
-    model = RNNParallelSequence(args, X, Y, opt, not args.use_cpu)
+    opt   = optimizers.SGD()
+    model = RNNParallelSequence(args, X, Y, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
     opt.add_hook(chainer.optimizer.GradientClipping(10))

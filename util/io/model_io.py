@@ -1,4 +1,6 @@
+import chainn
 import chainer
+import chainer.functions as F
 import numpy as np
 
 from chainer.links.connection.linear import Linear
@@ -82,7 +84,7 @@ class ModelFile:
                 self.read_linear(param[i])
             elif type(item) == EmbedID:
                 self.read_embed(param[i])
-            elif type(item) == LSTM:
+            elif type(item) == LSTM or type(item) == chainn.link.LSTM:
                 self.read_lstm(param[i])
             else:
                 raise NotImplementedError(type(item))
@@ -93,7 +95,21 @@ class ModelFile:
                 self.write_linear(item)
             elif type(item) == EmbedID:
                 self.write_embed(item)
-            elif type(item) == LSTM:
+            elif type(item) == LSTM or type(item) == chainn.link.LSTM:
                 self.write_lstm(item)
             else:
                 raise NotImplementedError(type(item))
+
+    def write_activation(self, f):
+        if f == F.tanh:
+            self.write("tanh")
+        elif f == F.relu:
+            self.write("relu")
+        else:
+            raise NotImplementedError(type(f))
+
+    def read_activation(self):
+        line = self.read()
+        if line == "tanh": return F.tanh
+        elif line == "relu": return F.relu
+        else: raise NotImplementedError(type(f))

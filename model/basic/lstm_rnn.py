@@ -7,22 +7,25 @@ from chainer import Variable
 
 from chainn import Vocabulary
 from chainn.model import RNN
+from chainn.link import LSTM
 
 class LSTMRNN(RNN):
     def __init__(self, *args, **kwargs):
         super(LSTMRNN, self).__init__(*args, **kwargs)
 
     def reset_state(self, *args, **kwargs):
-        for i in range(1, len(self)-1):
-            self[i].reset_state()
+        for item in self:
+            if type(item) == LSTM:
+                item.reset_state()
 
-    def __call__(self, word):
+    def __call__(self, word, update=True):
+        f = self._activation
         embed  = self[0]
         h_to_y = self[-1]
-        x = F.tanh(embed(word))
+        x = embed(word)
         for i in range(1,len(self)-1):
-            h = F.tanh(self[i](x if i == 1 else h))
-        y = F.tanh(h_to_y(h))
+            h = self[i](x if i == 1 else h, update)
+        y = f(h_to_y(h))
         return y
 
     def _generate_layer(self, input, output, hidden, depth, embed):
@@ -31,7 +34,7 @@ class LSTMRNN(RNN):
         ret.append(L.EmbedID(input, embed))
         for i in range(depth):
             start = embed if i == 0 else hidden
-            ret.append(L.LSTM(start, hidden))
+            ret.append(LSTM(start, hidden))
         ret.append(L.Linear(hidden, output))
         return ret
 

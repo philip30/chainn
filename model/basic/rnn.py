@@ -7,7 +7,7 @@ from chainer import ChainList, Variable
 from chainn import Vocabulary
 
 class RNN(ChainList):
-    def __init__(self, src_voc, trg_voc, input, output, hidden, depth, embed):
+    def __init__(self, src_voc, trg_voc, input, output, hidden, depth, embed, activation=F.tanh):
         super(RNN, self).__init__(
             *self._generate_layer(input, output, hidden, depth, embed)
         )
@@ -19,24 +19,27 @@ class RNN(ChainList):
         self._h       = None
         self._src_voc = src_voc
         self._trg_voc = trg_voc
+        self._activation = activation
 
     def reset_state(self, xp, batch=1):
         hidden  = self._hidden
         self._h = Variable(xp.zeros((batch, hidden), dtype=np.float32))
 
-    def __call__(self, word):
+    def __call__(self, word, update=True):
         if self._h is None:
             raise Exception("Need to call reset_state() before using the model!")
         embed  = self[0]
         e_to_h = self[1]
         h_to_h = self[2]
         h_to_y = self[-1]
-        x = F.tanh(embed(word))
-        h = F.tanh(e_to_h(x) + h_to_h(self._h))
+        f = self._activation
+        x = embed(word)
+        h = e_to_h(x) + h_to_h(self._h)
         for i in range(3,len(self)-1):
-            h = F.tanh(self[i](h))
-        self._h = h
-        y = F.tanh(h_to_y(h))
+            h = self[i](h)
+        if update:
+            self._h = h
+        y = f(h_to_y(h))
         return y
 
     def save(self, fp):
@@ -45,6 +48,7 @@ class RNN(ChainList):
         fp.write(self._hidden)
         fp.write(self._depth)
         fp.write(self._embed)
+        fp.write_activation(self._activation)
         self._src_voc.save(fp)
         self._trg_voc.save(fp)
         fp.write_param_list(self)
@@ -56,14 +60,15 @@ class RNN(ChainList):
         hidden = int(fp.read())
         depth  = int(fp.read())
         embed  = int(fp.read())
+        act    = fp.read_activation()
         src    = Vocabulary.load(fp)
         trg    = Vocabulary.load(fp)
-        ret    = Model(src, trg, input, output, hidden, depth, embed)
+        ret    = Model(src, trg, input, output, hidden, depth, embed, act)
         fp.read_param_list(ret)
         return ret
 
     # PROTECTED
-    def _generate_layer(input, output, hidden, depth, embed):
+    def _generate_layer(self, input, output, hidden, depth, embed):
         assert(depth >= 1)
         ret = []
         ret.append(L.EmbedID(input, embed))

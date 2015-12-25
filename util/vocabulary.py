@@ -1,16 +1,15 @@
 from collections import defaultdict
 
 UNK = "<UNK>"
-EOS = "</s>"
+EOS = "<EOS>"
+
 class Vocabulary(object):
     # Overloading methods
-    def __init__(self, EOS=None):
+    def __init__(self):
         self._data = defaultdict(lambda: len(self._data))
         self._back = {}
-        self._eos  = EOS
 
-        if EOS is not None:
-            self.__getitem__(EOS)
+        self._data[UNK]
 
     def __getitem__(self, index):
         id = self._data[index]
@@ -36,11 +35,9 @@ class Vocabulary(object):
 
     # Public
     def str_rpr(self, data):
-        EOS = self._eos
         ret = []
         for tok in data:
             ret.append(self.tok_rpr(tok))
-        if EOS is not None:
             ret.append(EOS)
             ret = ret[:ret.index(EOS)]
         return " ".join(ret)
@@ -51,27 +48,23 @@ class Vocabulary(object):
         else:
             return UNK
 
-    def fill_from_file(self, file):
-        with open(file, "r") as f:
-            for line in f:
-                line = line.strip().lower().split()
-                for tok in line:
-                    self.__getitem__(tok)
-
-    def get_eos(self):
-        return self._eos
-
     def save(self, fp):
         fp.write(len(self._data))
-        for word, index in sorted(self._data.items(), key=lambda x:int(x[1])):
+        for word, index in sorted(self._data.items(), key=lambda x:x[0]):
             fp.write(str(index) + "\t" + str(word))
+
+    def unk(self):
+        return UNK
+
+    def eos(self):
+        return EOS
 
     @staticmethod
     def load(fp):
         size = int(fp.read())
-        self = Vocabulary(EOS)
+        self = Vocabulary()
         for i in range(size):
             index, word = fp.read().strip().split("\t")
-            self[word] = int(index)
+            self.__setitem__(word, int(index))
         return self
 
