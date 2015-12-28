@@ -59,7 +59,13 @@ class Vocabulary(object):
         fp.write(len(self._data))
         for word, index in sorted(self._data.items(), key=lambda x:x[0]):
             fp.write(str(index) + "\t" + str(word))
+    
+    def unk_id(self):
+        return self[UNK]
 
+    def eos_id(self):
+        return self[EOS]
+    
     def unk(self):
         return UNK
 
