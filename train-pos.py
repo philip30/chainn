@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument("--init_model", type=str, help="Initialize model with the previous")
     parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
     parser.add_argument("--use_cpu", action="store_true")
+    parser.add_argument("--lr", type=float, default=0.1)
     return parser.parse_args()
 
 def main():
@@ -39,7 +40,7 @@ def main():
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.SGD()
+    opt   = optimizers.SGD(lr=args.lr)
     model = RNNParallelSequence(args, X, Y, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
@@ -76,7 +77,7 @@ def load_data(batch_size):
     holder        = defaultdict(lambda:[])
     # Reading in the data
     for line in sys.stdin:
-        sent          = line.strip().lower().split()
+        sent          = line.strip().split()
         words, labels = [], []
         for word in sent:
             word, tag = word.split("_")

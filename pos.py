@@ -12,7 +12,6 @@ def parse_args():
     parser = argparse.ArgumentParser("Program for multi-class classification using multi layered perceptron")
     parser.add_argument("--batch", type=int, help="Minibatch size", default=64)
     parser.add_argument("--init_model", required=True, type=str, help="Initiate the model from previous")
-    parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
     return parser.parse_args()
@@ -53,7 +52,7 @@ def load_data(fp, x_ids, batch_size):
     holder        = defaultdict(lambda:[])
     # Reading in the data
     for sent_id, line in enumerate(fp):
-        sent          = line.strip().lower().split()
+        sent          = line.strip().split()
         words, labels = [], []
         for word in sent:
             words.append(x_ids[word])

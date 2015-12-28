@@ -5,11 +5,12 @@ EOS = "<EOS>"
 
 class Vocabulary(object):
     # Overloading methods
-    def __init__(self):
+    def __init__(self, unk=True):
         self._data = defaultdict(lambda: len(self._data))
         self._back = {}
 
-        self._data[UNK]
+        if unk:
+            self[UNK] = 0
 
     def __getitem__(self, index):
         id = self._data[index]
@@ -32,6 +33,12 @@ class Vocabulary(object):
 
     def __str__(self):
         return str(self._data)
+
+    def __equal__(self, other):
+        if type(self) != type(other):
+            return False
+        else:
+            return self._data == other._data and self._back == other._back
 
     # Public
     def str_rpr(self, data):
@@ -65,6 +72,6 @@ class Vocabulary(object):
         self = Vocabulary()
         for i in range(size):
             index, word = fp.read().strip().split("\t")
-            self.__setitem__(word, int(index))
+            self[word] = int(index)
         return self
 

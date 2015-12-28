@@ -10,8 +10,11 @@ from chainn.model import RNN
 from chainn.link import LSTM
 
 class LSTMRNN(RNN):
+    name="LSTMRNN"
+
     def __init__(self, *args, **kwargs):
         super(LSTMRNN, self).__init__(*args, **kwargs)
+        self._name = LSTMRNN.name
 
     def reset_state(self, *args, **kwargs):
         for item in self:
@@ -32,7 +35,7 @@ class LSTMRNN(RNN):
         assert(depth >= 1)
         ret = []
         ret.append(L.EmbedID(input, embed))
-        for i in range(depth):
+        for i in range(depth+1):
             start = embed if i == 0 else hidden
             ret.append(LSTM(start, hidden))
         ret.append(L.Linear(hidden, output))

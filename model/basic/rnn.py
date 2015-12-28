@@ -7,10 +7,13 @@ from chainer import ChainList, Variable
 from chainn import Vocabulary
 
 class RNN(ChainList):
+    name = "RNN"
+
     def __init__(self, src_voc, trg_voc, input, output, hidden, depth, embed, activation=F.tanh):
         super(RNN, self).__init__(
             *self._generate_layer(input, output, hidden, depth, embed)
         )
+        self._name    = RNN.name
         self._input   = input
         self._output  = output
         self._hidden  = hidden
@@ -43,11 +46,12 @@ class RNN(ChainList):
         return y
 
     def save(self, fp):
-        fp.write(self._input)
-        fp.write(self._output)
-        fp.write(self._hidden)
-        fp.write(self._depth)
-        fp.write(self._embed)
+        fp.write(self._name)
+        fp.write("Inp:\t"+str(self._input))
+        fp.write("Out:\t"+str(self._output))
+        fp.write("Hid:\t"+str(self._hidden))
+        fp.write("Dep:\t"+str(self._depth))
+        fp.write("Emb:\t"+str(self._embed))
         fp.write_activation(self._activation)
         self._src_voc.save(fp)
         self._trg_voc.save(fp)
@@ -55,11 +59,11 @@ class RNN(ChainList):
   
     @staticmethod
     def load(fp, Model):
-        input  = int(fp.read())
-        output = int(fp.read())
-        hidden = int(fp.read())
-        depth  = int(fp.read())
-        embed  = int(fp.read())
+        input  = int(fp.read().split("\t")[1])
+        output = int(fp.read().split("\t")[1])
+        hidden = int(fp.read().split("\t")[1])
+        depth  = int(fp.read().split("\t")[1])
+        embed  = int(fp.read().split("\t")[1])
         act    = fp.read_activation()
         src    = Vocabulary.load(fp)
         trg    = Vocabulary.load(fp)
@@ -72,9 +76,9 @@ class RNN(ChainList):
         assert(depth >= 1)
         ret = []
         ret.append(L.EmbedID(input, embed))
-        ret.append(L.Linear(embed, hidden))
-        for _ in range(depth):
-            ret.append(L.Linear(hidden, hidden))
+        for i in range(depth+1):
+            start = embed if i == 0 else hidden
+            ret.append(L.Linear(start, hidden))
         ret.append(L.Linear(hidden, output))
         return ret
 
