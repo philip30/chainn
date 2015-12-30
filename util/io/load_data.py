@@ -72,4 +72,49 @@ def load_pos_test_data(lines, x_ids, batch_size=1):
             sent_ids.append(sent_batch)
     return X, sent_ids
 
+def load_lm_data(lines, x_ids=None, batch_size=1, cut_threshold=1):
+    replace_unk = x_ids is not None
+    if x_ids is None:
+        x_ids = Vocabulary()
+        x_ids["<s>"], x_ids["</s>"]
+
+    count  = defaultdict(lambda:0)
+    holder = defaultdict(lambda:[])
+    # Reading and counting the data
+    for sent_id, line in enumerate(lines):
+        sent = ["<s>"] + line.strip().lower().split() + ["</s>"]
+        words, next_w = [], []
+        for i, tok in enumerate(sent):
+            count[tok] += 1
+            if i < len(sent)-1:
+                words.append(sent[i])
+                next_w.append(sent[i+1])
+        holder[len(words)].append([sent_id, words, next_w])
+
+    id_train = lambda x: x_ids[x] if count[x] > cut_threshold else x_ids.unk_id()
+    id_rep = lambda x: x_ids[x] if  x in x_ids else x_ids.unk_id()
+    convert_to_id = id_rep if replace_unk else id_train
+    # Convert to appropriate data structure
+    X, Y, ids = [], [], []
+    for src_len, items in sorted(holder.items(), key=lambda x:x[0]):
+        item_count = 0
+        x_batch, y_batch, id_batch = [], [], []
+        for sent_id, words, next_words in items:
+            word = list(map(convert_to_id, words))
+            nw   = list(map(convert_to_id, next_words))
+            x_batch.append(word)
+            y_batch.append(nw)
+            id_batch.append(sent_id)
+            item_count += 1
+
+            if item_count % batch_size == 0:
+                X.append(x_batch)
+                Y.append(y_batch)
+                ids.append(id_batch)
+                x_batch, y_batch, id_batch = [], [], []
+        if len(x_batch) != 0:
+            X.append(x_batch)
+            Y.append(y_batch)
+            ids.append(id_batch)
+    return X, Y, x_ids, ids
 

@@ -12,7 +12,7 @@ from chainer import Chain, cuda, optimizers, Variable
 
 from chainn import functions as UF
 from chainn.model import RNNParallelSequence
-from chainn.util import Vocabulary, ModelFile
+from chainn.util import Vocabulary, ModelFile, load_lm_data
 
 def parse_args():
     parser = argparse.ArgumentParser("Program for POS-Tagging classification using RNN/LSTM-RNN")
@@ -20,8 +20,8 @@ def parse_args():
     parser.add_argument("--embed", type=int, help="Embedding vector size", default=200)
     parser.add_argument("--depth", type=int, help="Depth of the network", default=2)
     parser.add_argument("--batch", type=int, help="Minibatch size", default=64)
-    parser.add_argument("--epoch", type=int, help="Epoch", default=30)
-    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--epoch", type=int, help="Epoch", default=50)
+    parser.add_argument("--lr", type=float, default=0.05)
     parser.add_argument("--model_out", type=str, help="Where the model is saved", required=True)
     parser.add_argument("--init_model", type=str, help="Initialize model with the previous")
     parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
@@ -38,9 +38,9 @@ def main():
 
     # data
     UF.trace("Loading corpus + dictionary")
-    word, next_word, X = load_data(sys.stdin, args.batch, Vocabulary())
+    word, next_word, X, _ = load_lm_data(sys.stdin, batch_size=args.batch)
     if args.dev:
-        word_dev, next_word_dev, _ = load_data(args.dev, args.batch, X, replace_unk=True)
+        word_dev, next_word_dev, _, _ = load_lm_data(args.dev, x_ids=X, batch_size=args.batch)
 
     # Setup model
     UF.trace("Setting up classifier")
@@ -74,7 +74,7 @@ def main():
             print("PPL Dev:", math.exp(dev_loss), file=sys.stderr)
             
         # Decaying Weight
-        if prev_loss < epoch_loss:
+        if prev_loss < epoch_loss and hasattr(opt,'lr'):
             opt.lr *= 0.5
             UF.trace("Reducing LR:", opt.lr)
         prev_loss = epoch_loss
@@ -83,44 +83,6 @@ def main():
     with ModelFile(open(args.model_out, "w")) as model_out:
         model.save(model_out)
 
-def load_data(fp, batch_size, x_ids, replace_unk=False):
-    count  = defaultdict(lambda:0)
-    holder = defaultdict(lambda:[])
-    # Reading and counting the data
-    for sent_id, line in enumerate(fp):
-        sent = ["<s>"] + line.strip().lower().split() + ["</s>"]
-        words, next_w = [], []
-        for i, tok in enumerate(sent):
-            count[tok] += 1
-            if i < len(sent)-1:
-                words.append(sent[i])
-                next_w.append(sent[i+1])
-        holder[len(words)].append([sent_id, words, next_w])
-
-    id_train = lambda x: x_ids[x] if count[x] > 3 else x_ids[x_ids.unk()]
-    id_rep = lambda x: x_ids[x] if  x in x_ids else x_ids[x_ids.unk()]
-    convert_to_id = id_rep if replace_unk else id_train
-    # Convert to appropriate data structure
-    X, Y = [], []
-    for src_len, items in sorted(holder.items(), key=lambda x:x[0]):
-        item_count = 0
-        x_batch, y_batch = [], []
-        for sent_id, words, next_words in items:
-            word = list(map(convert_to_id, words))
-            nw   = list(map(convert_to_id, next_words))
-            x_batch.append(word)
-            y_batch.append(nw)
-            item_count += 1
-
-            if item_count % batch_size == 0:
-                X.append(x_batch)
-                Y.append(y_batch)
-                x_batch, y_batch = [], []
-        if len(x_batch) != 0:
-            X.append(x_batch)
-            Y.append(y_batch)
-    return X, Y, x_ids
- 
 if __name__ == "__main__":
     main()
 

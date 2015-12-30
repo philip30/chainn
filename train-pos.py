@@ -40,7 +40,8 @@ def main():
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.SGD(lr=args.lr)
+#    opt   = optimizers.SGD(lr=args.lr)
+    opt   = optimizers.AdaDelta()
     model = RNNParallelSequence(args, X, Y, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
@@ -60,7 +61,7 @@ def main():
         epoch_loss /= len(train)
 
         # Decaying Weight
-        if prev_loss < epoch_loss:
+        if prev_loss < epoch_loss and hasattr(opt,'lr'):
             opt.lr *= 0.5
             UF.trace("Reducing LR:", opt.lr)
         prev_loss = epoch_loss

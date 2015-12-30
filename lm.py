@@ -8,6 +8,7 @@ import math
 from collections import defaultdict
 from chainn import functions as UF
 from chainn.model import RNNParallelSequence
+from chainn.util import load_lm_data
 
 def parse_args():
     parser = argparse.ArgumentParser("Program for multi-class classification using multi layered perceptron")
@@ -29,11 +30,11 @@ def main():
     # Setup model
     UF.trace("Setting up classifier")
     model = RNNParallelSequence(args, use_gpu=not args.use_cpu, collect_output=True)
-    X, _  = model.get_vocabularies()
+    X, Y  = model.get_vocabularies()
 
     # data
     UF.trace("Loading test data + dictionary from stdin")
-    word, next_word, sent_ids = load_data(sys.stdin, args.batch, X)
+    word, next_word, _, sent_ids = load_lm_data(sys.stdin, X, batch_size=args.batch)
        
     # POS Tagging
     output_collector = {}
@@ -46,7 +47,7 @@ def main():
             output_collector[id] = (X.str_rpr(result), accum_loss)
             
             if args.verbose:
-                inp    = [X.tok_rpr(x) for x in inp]
+                inp    = [Y.tok_rpr(x) for x in inp]
                 result = [X.tok_rpr(x) for x in result]
                 print("INP:", " ".join(inp), file=sys.stderr)
                 print("OUT:", " ".join(result), file=sys.stderr)
@@ -68,41 +69,6 @@ def main():
         print(math.exp(total_loss))
     if gen_fp is not None:
         gen_fp.close()
-
-
-def load_data(fp, batch_size, x_ids):
-    holder        = defaultdict(lambda:[])
-    # Reading in the data
-    for sent_id, line in enumerate(fp):
-        sent          = ["<s>"] + line.strip().lower().split() + ["</s>"]
-        words, next_w = [], []
-        for i in range(len(sent)-1):
-            words.append(x_ids[sent[i]] if sent[i] in x_ids else x_ids[x_ids.unk()])
-            next_w.append(x_ids[sent[i+1]] if sent[i+1] in x_ids else x_ids[x_ids.unk()])
-        holder[len(words)].append((sent_id, words, next_w))
-
-    # Convert to appropriate data structure
-    X, Y, sent_ids = [], [], []
-    for src_len, items in sorted(holder.items(), key=lambda x:x[0]):
-        item_count = 0
-        x_batch, y_batch = [], []
-        sent_batch = []
-        for sent_id, words, next_words in items:
-            x_batch.append(words)
-            y_batch.append(next_words)
-            sent_batch.append(sent_id)
-            item_count += 1
-
-            if item_count % batch_size == 0:
-                X.append(x_batch)
-                Y.append(y_batch)
-                sent_ids.append(sent_batch)
-                x_batch, y_batch = [], []
-        if len(x_batch) != 0:
-            X.append(x_batch)
-            Y.append(y_batch)
-            sent_ids.append(sent_batch)
-    return X, Y, sent_ids
 
 if __name__ == "__main__":
     main()
