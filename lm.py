@@ -7,14 +7,13 @@ import math
 
 from collections import defaultdict
 from chainn import functions as UF
-from chainn.model import RNNParallelSequence
+from chainn.model import ParallelTextClassifier
 from chainn.util import load_lm_data
 
 def parse_args():
     parser = argparse.ArgumentParser("Program for multi-class classification using multi layered perceptron")
     parser.add_argument("--batch", type=int, help="Minibatch size", default=1)
     parser.add_argument("--init_model", required=True, type=str, help="Initiate the model from previous")
-    parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
     parser.add_argument("--operation", choices=["sppl", "cppl"], help="sppl: Sentence-wise ppl\ncppl: Corpus-wise ppl", default="sppl")
     parser.add_argument("--gen", action="store_true")
     parser.add_argument("--verbose", action="store_true")
@@ -24,12 +23,9 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # Variable
-    batch_size = args.batch
-
     # Setup model
     UF.trace("Setting up classifier")
-    model = RNNParallelSequence(args, use_gpu=not args.use_cpu, collect_output=True)
+    model = ParallelTextClassifier(args, use_gpu=not args.use_cpu, collect_output=True)
     X, Y  = model.get_vocabularies()
 
     # data

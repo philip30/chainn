@@ -2,7 +2,6 @@ import sys
 import unicodedata
 
 class DecodingOutput:
-    
     def __init__(self, decode=None, alignment=None):
         self.__data = {}
         self.__data["decode"] = decode
@@ -12,7 +11,6 @@ class DecodingOutput:
         return self.__data[key]
 
 class AlignmentVisualizer:
-
     def __init__(self, out_dir):
         self.__fp = None
         if out_dir:
@@ -74,3 +72,4 @@ class AlignmentVisualizer:
             else:
                 ret += 1
         return ret
+

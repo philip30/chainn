@@ -3,6 +3,7 @@ import chainer
 import chainer.functions as F
 import numpy as np
 
+from chainer import optimizers
 from chainer.links.connection.linear import Linear
 from chainer.links.connection.embed_id import EmbedID
 from chainer.links.connection.lstm import LSTM
@@ -113,3 +114,27 @@ class ModelFile:
         if line == "tanh": return F.tanh
         elif line == "relu": return F.relu
         else: raise NotImplementedError(type(f))
+
+    def write_optimizer_state(self, opt):
+        if type(opt) == optimizers.SGD:
+            self.write("sgd\t%.30f" % opt.lr)
+        elif type(opt) == optimizers.AdaDelta:
+            self.write("adadelta")
+        elif type(opt) == optimizers.AdaGrad:
+            self.write("adagrad \t%.30f" %opt.lr)
+        else:
+            raise NotImplementedError(type(opt))
+
+    def read_optimizer_state(self, opt):
+        line = self.read().split("\t")
+        if line[0] == "sgd":
+            if type(opt) == optimizers.SGD:
+                opt.lr = float(line[1])
+        elif line[0] == "adadelta":
+            pass
+        elif line[0] == "adagrad":
+            if type(opt) == optimizers.AdaGrad:
+                opt.lr = float(line[1])
+        else:
+            raise NotImplementedError(type(opt))
+

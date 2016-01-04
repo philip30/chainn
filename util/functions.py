@@ -27,24 +27,11 @@ def argmax(data):
     return [x for x in data]
 
 # SMT decoder model
-def init_model_parameters(model, minimum=-0.1, maximum=0.1, seed=0):
-    prng = RandomState(seed)
-    for param in model.parameters:
-        param[:] = prng.uniform(minimum, maximum, param.shape)
-
-def select_model(model):
-    from chainn.model import EncoderDecoder
-    from chainn.model import Attentional
-    from chainn.model import EffectiveAttentional
-
-    if model == "encdec":
-        return EncoderDecoder
-    elif model == "attn":
-        return Attentional
-    elif model == "efattn":
-        return EffectiveAttentional
-    else:
-        raise Exception("Unknown model:", model)
+def select_model(name, all_models):
+    for pot_model in all_models:
+        if name == pot_model.name:
+            return pot_model
+    raise NotImplementedError(name)
 
 # Argparse
 def check_positive(value, cast=float):

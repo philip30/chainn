@@ -6,7 +6,7 @@ import numpy as np
 
 from collections import defaultdict
 from chainn import functions as UF
-from chainn.model import RNNParallelSequence
+from chainn.model import ParallelTextClassifier
 from chainn.util import load_pos_test_data
 
 def parse_args():
@@ -20,12 +20,9 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # Variable
-    batch_size = args.batch
-
     # Setup model
     UF.trace("Setting up classifier")
-    model = RNNParallelSequence(args, use_gpu=not args.use_cpu)
+    model = ParallelTextClassifier(args, use_gpu=not args.use_cpu)
     X, Y  = model.get_vocabularies()
 
     # data
@@ -36,7 +33,7 @@ def main():
     output_collector = {}
     UF.trace("Start Tagging")
     for batch, batch_id in zip(test, sent_ids):
-        tag_result = model.predict(batch)
+        tag_result = model(batch)
         for inp, result, id in zip(batch, tag_result, batch_id):
             output_collector[id] = Y.str_rpr(result)
             

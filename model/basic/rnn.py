@@ -3,17 +3,17 @@ import numpy as np
 import chainer.functions as F
 import chainer.functions as L
 
-from chainer import ChainList, Variable
+from chainer import Variable
 from chainn import Vocabulary
+from . import ChainnBasicModel
 
-class RNN(ChainList):
-    name = "RNN"
+class RNN(ChainnBasicModel):
+    name = "rnn"
 
-    def __init__(self, src_voc, trg_voc, input, output, hidden, depth, embed, activation=F.tanh):
+    def __init__(self, src_voc, trg_voc, input, output, hidden, depth, embed, activation=F.tanh, xp=np):
         super(RNN, self).__init__(
             *self._generate_layer(input, output, hidden, depth, embed)
         )
-        self._name    = RNN.name
         self._input   = input
         self._output  = output
         self._hidden  = hidden
@@ -23,10 +23,10 @@ class RNN(ChainList):
         self._src_voc = src_voc
         self._trg_voc = trg_voc
         self._activation = activation
+        self._xp      = xp
 
-    def reset_state(self, xp, batch=1):
-        hidden  = self._hidden
-        self._h = Variable(xp.zeros((batch, hidden), dtype=np.float32))
+    def reset_state(self, batch=1):
+        self._h = Variable(self._xp.zeros((batch, self._hidden), dtype=np.float32))
 
     def __call__(self, word, update=True):
         if self._h is None:
@@ -44,32 +44,6 @@ class RNN(ChainList):
             self._h = h
         y = f(h_to_y(h))
         return y
-
-    def save(self, fp):
-        fp.write(self._name)
-        fp.write("Inp:\t"+str(self._input))
-        fp.write("Out:\t"+str(self._output))
-        fp.write("Hid:\t"+str(self._hidden))
-        fp.write("Dep:\t"+str(self._depth))
-        fp.write("Emb:\t"+str(self._embed))
-        fp.write_activation(self._activation)
-        self._src_voc.save(fp)
-        self._trg_voc.save(fp)
-        fp.write_param_list(self)
-  
-    @staticmethod
-    def load(fp, Model):
-        input  = int(fp.read().split("\t")[1])
-        output = int(fp.read().split("\t")[1])
-        hidden = int(fp.read().split("\t")[1])
-        depth  = int(fp.read().split("\t")[1])
-        embed  = int(fp.read().split("\t")[1])
-        act    = fp.read_activation()
-        src    = Vocabulary.load(fp)
-        trg    = Vocabulary.load(fp)
-        ret    = Model(src, trg, input, output, hidden, depth, embed, act)
-        fp.read_param_list(ret)
-        return ret
 
     # PROTECTED
     def _generate_layer(self, input, output, hidden, depth, embed):

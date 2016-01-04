@@ -1,5 +1,6 @@
 import unittest
-from chainn.model import RNN
+import numpy as np
+from chainn.model.basic import RNN
 from chainn.util import ModelFile, Vocabulary
 from chainn.test import TestCase
 
@@ -29,9 +30,9 @@ class TestRNN(TestCase):
 
         with ModelFile(open(model)) as fp:
             fp.read()
-            model1 = self.model.load(fp, self.model.__class__)
+            model1 = self.model.load(fp, self.model.__class__, np)
         
-        self.assertRNNEqual(self.model, model1)
+        self.assertModelEqual(self.model, model1)
 
     def test_init_size(self):
         self.assertEqual(len(self.model), 4) # Input, Embed, Hidden, Output

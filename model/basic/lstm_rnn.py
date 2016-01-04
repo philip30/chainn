@@ -6,15 +6,15 @@ import chainer.links as L
 from chainer import Variable
 
 from chainn import Vocabulary
-from chainn.model import RNN
 from chainn.link import LSTM
 
+from . import RNN
+
 class LSTMRNN(RNN):
-    name="LSTMRNN"
+    name="lstm"
 
     def __init__(self, *args, **kwargs):
         super(LSTMRNN, self).__init__(*args, **kwargs)
-        self._name = LSTMRNN.name
 
     def reset_state(self, *args, **kwargs):
         for item in self:

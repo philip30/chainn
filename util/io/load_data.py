@@ -118,3 +118,77 @@ def load_lm_data(lines, x_ids=None, batch_size=1, cut_threshold=1):
             ids.append(id_batch)
     return X, Y, x_ids, ids
 
+def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
+    data = defaultdict(lambda:[])
+    SRC  = Vocabulary(unk=True, eos=True)
+    TRG  = Vocabulary(unk=True, eos=True)
+
+    src_count = defaultdict(lambda:0)
+    trg_count = defaultdict(lambda:0)
+
+    # Reading in data
+    for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
+        src_line = src_line.strip().lower().split() + [SRC.eos()]
+        trg_line = trg_line.strip().lower().split() + [TRG.eos()]
+
+        for word in src_line:
+            src_count[word] += 1
+        for word in trg_line:
+            trg_count[word] += 1
+        
+        data[len(src_line), len(trg_line)].append((sent_id, src_line, trg_line))
+        
+    # Convert to id
+    rep_rare = lambda x, y, z: x[y] if z[y] > cut_threshold else x.unk_id()
+    x_data, y_data = [], []
+    for key_len, items in sorted(data.items(), key=lambda x: x[0]):
+        item_count = 0
+
+        x_batch, y_batch = [], []
+        for sent_id, src_line, trg_line in items:
+            src_line = [rep_rare(SRC, word, src_count) for word in src_line]
+            trg_line = [rep_rare(TRG, word, trg_count) for word in trg_line]
+            x_batch.append(src_line)
+            y_batch.append(trg_line)
+            item_count += 1
+            
+            if item_count % batch_size == 0:
+                x_data.append(x_batch)
+                y_data.append(y_batch)
+                x_batch, y_batch = [], []
+        if len(x_batch) != 0:
+            x_data.append(x_batch)
+            y_data.append(y_batch)
+    return x_data, y_data, SRC, TRG
+
+def load_nmt_test_data(src, SRC, batch_size=1):
+    data = defaultdict(lambda:[])
+
+    # Reading in data
+    for sent_id, src_line in enumerate(src):
+        src_line = src_line.strip().lower().split() + [SRC.eos()]
+
+        data[len(src_line)].append((sent_id, src_line))
+        
+    # Convert to id
+    rep_rare = lambda x, y: x[y] if y in x else x.unk_id()
+    x_data, ids = [], []
+    for key_len, items in sorted(data.items(), key=lambda x: x[0]):
+        item_count = 0
+
+        x_batch, id_batch = [], []
+        for sent_id, src_line in items:
+            src_line = [rep_rare(SRC, word) for word in src_line]
+            x_batch.append(src_line)
+            id_batch.append(sent_id)
+            item_count += 1
+            
+            if item_count % batch_size == 0:
+                x_data.append(x_batch)
+                ids.append(id_batch)
+                x_batch, id_batch = [], []
+        if len(x_batch) != 0:
+            x_data.append(x_batch)
+            ids.append(id_batch)
+    return x_data, ids
+

@@ -2,7 +2,11 @@
 #from chainn.model.nmt.encdec import EncoderDecoder
 #from chainn.model.nmt.attentional import Attentional
 #from chainn.model.nmt.efattentional import EffectiveAttentional
-from chainn.model.basic.mlp import MLP
-from chainn.model.basic.rnn import RNN
-from chainn.model.basic.lstm_rnn import LSTMRNN
-from chainn.model.nlp.rnn_parallel import RNNParallelSequence
+
+from chainn.model.classifier.chainn_classifier import ChainnClassifier
+from chainn.model.classifier.parallel_text import ParallelTextClassifier
+from chainn.model.classifier.encdec_nmt import EncDecNMT
+
+#from chainn.model.classifier.nmt import NMT
+#from chainn.model.classifier.chainn_model import ChainnModel
+

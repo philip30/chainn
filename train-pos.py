@@ -7,11 +7,11 @@ from collections import defaultdict
 
 import chainer
 import chainer.functions as F
-from chainer import Chain, cuda, optimizers, Variable
+from chainer import Chain, optimizers, Variable
 
 from chainn import functions as UF
-from chainn.model import RNNParallelSequence
-from chainn.util import Vocabulary, ModelFile, load_pos_train_data
+from chainn.model import ParallelTextClassifier
+from chainn.util import ModelFile, load_pos_train_data
 
 def parse_args():
     parser = argparse.ArgumentParser("train-pos")
@@ -31,7 +31,6 @@ def main():
     args = parse_args()
     
     # Variable
-    batch_size = args.batch
     epoch_total = args.epoch
 
     # data
@@ -40,9 +39,8 @@ def main():
 
     # Setup model
     UF.trace("Setting up classifier")
-#    opt   = optimizers.SGD(lr=args.lr)
-    opt   = optimizers.AdaDelta()
-    model = RNNParallelSequence(args, X, Y, opt, not args.use_cpu, activation=F.relu)
+    opt   = optimizers.SGD(lr=args.lr)
+    model = ParallelTextClassifier(args, X, Y, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
     opt.add_hook(chainer.optimizer.GradientClipping(10))

@@ -12,8 +12,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(x._data, y._data)
         self.assertEqual(x._back, y._back)
 
-    def assertRNNEqual(self, x, y):
-        self.assertEqual(x._name, y._name)
+    def assertModelEqual(self, x, y):
         self.assertEqual(x._input, y._input)
         self.assertEqual(x._output, y._output)
         self.assertVocEqual(x._src_voc, y._src_voc)

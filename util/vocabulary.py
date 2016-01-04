@@ -5,12 +5,15 @@ EOS = "<EOS>"
 
 class Vocabulary(object):
     # Overloading methods
-    def __init__(self, unk=True):
+    def __init__(self, unk=True, eos=True):
         self._data = defaultdict(lambda: len(self._data))
         self._back = {}
 
         if unk:
-            self[UNK] = 0
+            self[UNK]
+
+        if eos:
+            self[EOS]
 
     def __getitem__(self, index):
         id = self._data[index]
