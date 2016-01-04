@@ -48,7 +48,7 @@ class ChainnClassifier(object):
         
         if args.init_model:
             with ModelFile(open(args.init_model)) as model_in:
-                model_in.read_optimizer_state(self._opt)
+                self._opt = model_in.read_optimizer_state()
                 name = model_in.read()
                 model = UF.select_model(name, self._all_models)
                 return model.load(model_in, model, self._xp)

@@ -121,20 +121,20 @@ class ModelFile:
         elif type(opt) == optimizers.AdaDelta:
             self.write("adadelta")
         elif type(opt) == optimizers.AdaGrad:
-            self.write("adagrad \t%.30f" %opt.lr)
+            self.write("adagrad\t%.30f" %opt.lr)
         else:
             raise NotImplementedError(type(opt))
 
-    def read_optimizer_state(self, opt):
+    def read_optimizer_state(self):
         line = self.read().split("\t")
+        opt = None
         if line[0] == "sgd":
-            if type(opt) == optimizers.SGD:
-                opt.lr = float(line[1])
+            opt = optimizers.SGD(lr=float(line[1]))
         elif line[0] == "adadelta":
-            pass
+            opt = optimizers.AdaDelta()
         elif line[0] == "adagrad":
-            if type(opt) == optimizers.AdaGrad:
-                opt.lr = float(line[1])
+            opt = optimizers.AdaGrad(lr=float(line[1]))
         else:
-            raise NotImplementedError(type(opt))
+            raise NotImplementedError(line[0])
+        return opt
 

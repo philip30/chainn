@@ -39,7 +39,7 @@ def main():
         UF.trace("Decoding started.")
         for src, id_batch in zip(data_batch, ids):
             trg = model(src, gen_limit=args.gen_limit)
-            
+             
             for trg_out, sent_id in zip(trg, id_batch):
                 output_collector[sent_id] = trg_out
 
@@ -53,9 +53,8 @@ def main():
         # Line by line decoding
         for line in sys.stdin:
             line, id = load_nmt_test_data([line.strip()], SRC)
-          
             trg = model(line[0], gen_limit=args.gen_limit)
-            print_result(trg, TRG, line, SRC, sys.stdout)
+            print_result(trg, TRG, line[0], SRC, sys.stdout)
     
 def print_result(trg, TRG, src, SRC, fp=sys.stderr):
     for i, (sent, result) in enumerate(zip(src, trg)):

@@ -9,7 +9,7 @@ import chainn.util.functions as UF
 import chainn.util.generators as UG
 
 from collections import defaultdict
-from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile
+from chainn.util import Vocabulary as Vocab, load_nmt_train_unsorted_data, ModelFile
 from chainn.model import EncDecNMT
 from chainer import optimizers
 
@@ -25,9 +25,9 @@ def parse_args():
     parser.add_argument("--hidden", type=positive, default=128)
     parser.add_argument("--embed", type=positive, default=128)
     parser.add_argument("--batch", type=positive, default=64)
-    parser.add_argument("--epoch", type=positive, default=20)
+    parser.add_argument("--epoch", type=positive, default=100)
     parser.add_argument("--depth", type=positive, default=1)
-    parser.add_argument("--lr", type=positive, default=0.5)
+    parser.add_argument("--lr", type=positive, default=0.01)
     parser.add_argument("--save_len", type=positive_decimal, default=1)
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
@@ -42,11 +42,11 @@ def main():
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
-            x_data, y_data, SRC, TRG = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=1)
+            x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=1)
    
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.SGD(lr=args.lr)
+    opt   = optimizers.AdaGrad(lr=args.lr)
     model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=True)
 
     # Hooking
@@ -73,7 +73,7 @@ def main():
             UF.trace("Trained %d: %f" % (trained, accum_loss))
 
         # Decaying learning rate
-        if (prev_loss < epoch_loss) and hasattr(opt,'lr'):
+        if (prev_loss < epoch_loss or epoch > 10) and hasattr(opt,'lr'):
             opt.lr *= 0.5
             UF.trace("Reducing LR:", opt.lr)
         prev_loss = epoch_loss

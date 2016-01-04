@@ -192,3 +192,68 @@ def load_nmt_test_data(src, SRC, batch_size=1):
             ids.append(id_batch)
     return x_data, ids
 
+def unsorted_batch(x_batch, SRC):
+    max_len = max(len(x) for x in x_batch)
+    for i in range(len(x_batch)):
+        x_batch[i] += [SRC.eos_id() for _ in range(max_len-len(x_batch[i]))]
+    return x_batch
+
+def load_nmt_train_unsorted_data(src, trg, batch_size=1, cut_threshold=1):
+    srcs, trgs = [], []
+    src_count = defaultdict(lambda:0)
+    trg_count = defaultdict(lambda:0)
+    SRC  = Vocabulary(unk=True, eos=True)
+    TRG  = Vocabulary(unk=True, eos=True)
+
+    # Reading in data
+    for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
+        src_line = src_line.strip().lower().split() + [SRC.eos()]
+        trg_line = trg_line.strip().lower().split() + [TRG.eos()]
+
+        for word in src_line:
+            src_count[word] += 1
+        for word in trg_line:
+            trg_count[word] += 1
+        srcs.append(src_line)
+        trgs.append(trg_line)
+     
+    rep_rare = lambda x, y, z: x[y] if z[y] > cut_threshold else x.unk_id()
+    x_batch, y_batch = [], []
+    x_data, y_data = [], []
+    item_count = 0
+    for sent_id, (src_line, trg_line) in enumerate(zip(srcs, trgs)):
+        src_line = [rep_rare(SRC, word, src_count) for word in src_line]
+        trg_line = [rep_rare(TRG, word, trg_count) for word in trg_line]
+        x_batch.append(src_line), y_batch.append(trg_line)
+        item_count += 1
+
+        if item_count % batch_size == 0:
+            x_data.append(unsorted_batch(x_batch, SRC))
+            y_data.append(unsorted_batch(y_batch, TRG))
+            x_batch, y_batch = [], []
+    if len(x_batch) != 0:
+        x_data.append(unsorted_batch(x_batch, SRC))
+        y_data.append(unsorted_batch(y_batch, TRG))
+    return x_data, y_data, SRC, TRG
+
+def load_nmt_test_unsorted_data(src, SRC, batch_size=1):
+    rep_rare = lambda x, y: x[y] if y in x else x.unk_id()
+    ret, ids = [], []
+    item_count = 0
+    x_batch, id_batch = [], []
+    for sent_id, src_line in enumerate(src):
+        src_line = src_line.strip().lower().split() + [SRC.eos()]
+        src_line = [rep_rare(SRC, word) for word in src_line]
+        x_batch.append(src_line)
+        id_batch.append(sent_id)
+        item_count += 1
+
+        if item_count % batch_size == 0:
+            ret.append(unsorted_batch(x_batch, SRC))
+            ids.append(id_batch)
+            x_batch, id_batch = [], []
+    
+    if len(x_batch) != 0:
+        ret.append(unsorted_batch(x_batch, SRC))
+        ids.append(id_batch)
+    return ret, ids
