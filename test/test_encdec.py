@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 
+from os import path
+from subprocess import check_call
 from chainer import optimizers
 
 from chainn.util import Vocabulary, ModelFile
@@ -31,7 +33,9 @@ class TestEncDecClassifier(TestCase):
         self.model = EncDecNMT(Args(), src_voc, trg_voc, optimizer=optimizers.SGD())
         self.src_voc = src_voc
         self.trg_voc = trg_voc
-
+        self.data = path.join(path.dirname(__file__), "data")
+        self.script = path.join(path.dirname(__file__),"script")
+ 
     def test_encdec_read_write(self):
         model = "/tmp/model-nmt.temp"
         X, Y  = self.src_voc, self.trg_voc
@@ -51,6 +55,17 @@ class TestEncDecClassifier(TestCase):
             
         # Check
         self.assertModelEqual(self.model._model.predictor, model1._model.predictor)
+
+    def test_nmt_run(self):
+        print("----- Testing train+using nmt -----")
+        script    = path.join(self.script, "execute_nmt.sh")
+        src       = path.join(self.data, "nmt.en")
+        trg       = path.join(self.data, "nmt.ja")
+        test      = path.join(self.data, "nmt-test.en")
+        train_nmt = path.join("train-nmt.py")
+        test_nmt  = path.join("nmt.py")
+        check_call([script, src, trg, test, train_nmt, test_nmt])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,12 +1,16 @@
 import unittest
 
+from os import path
+from subprocess import check_call
+
 from chainn.test import TestCase
 from chainn.util import load_pos_train_data, load_pos_test_data, Vocabulary
 
 class TestPOS(TestCase):
 
     def setUp(self):
-        pass
+        self.data = path.join(path.dirname(__file__), "data")
+        self.script = path.join(path.dirname(__file__),"script")
 
     def test_read_train(self):
         train = ["I_NNP am_VBZ Philip_NNP", "I_NNP am_VBZ student_NN"]
@@ -45,6 +49,15 @@ class TestPOS(TestCase):
                 [[X["I"], X["live"], X["in"], X.unk_id()]]\
         ]
         self.assertEqual(data, data_exp)
+
+    def test_pos_run(self):
+        print("----- Testing train+using pos -----")
+        script    = path.join(self.script, "execute_pos.sh")
+        inp       = path.join(self.data, "pos.train")
+        test      = path.join(self.data, "pos.test")
+        train_pos = path.join("train-pos.py")
+        test_pos  = path.join("pos.py")
+        check_call([script, inp, test, train_pos, test_pos])
 
 if __name__ == "__main__":
     unittest.main()

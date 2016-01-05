@@ -64,3 +64,6 @@ class TestCase(unittest.TestCase):
         for xrow, yrow in zip(x, y):
             self.assertVectorEqual(xrow, yrow)
         
+    def assertReturn0(self, signal):
+        self.assertEqual(signal, 0)
+

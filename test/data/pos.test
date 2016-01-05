@@ -1,0 +1,5 @@
+In computational linguistics , word-sense disambiguation -LRB- WSD -RRB- is an open problem of natural language processing , which governs the process of identifying which sense of a word -LRB- i.e. meaning -RRB- is used in a sentence , when the word has multiple meanings -LRB- polysemy -RRB- .
+The solution to this problem impacts other computer-related writing , such as discourse , improving relevance of search engines , anaphora resolution , coherence , inference et cetera .
+Research has progressed steadily to the point where WSD systems achieve sufficiently high levels of accuracy on a variety of word types and ambiguities .
+A rich variety of techniques have been researched , from dictionary-based methods that use the knowledge encoded in lexical resources , to supervised machine learning methods in which a classifier is trained for each distinct word on a corpus of manually sense-annotated examples , to completely unsupervised methods that cluster occurrences of words , thereby inducing word senses .
+Among these , supervised learning approaches have been the most successful algorithms to date .

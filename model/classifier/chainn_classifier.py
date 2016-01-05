@@ -10,12 +10,17 @@ from chainn.util import ModelFile
 class ChainnClassifier(object):
     def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=False, collect_output=False, activation=F.tanh):
         self._opt            = optimizer
-        self._xp             = cuda.cupy if use_gpu else np
+        if not hasattr(cuda, "cupy"):
+            use_gpu  = False
+            self._xp = np
+        else:
+            self._xp = cuda.cupy if use_gpu else np
+        
         self._model          = self._load_classifier()(self._load_model(args, X, Y, activation))
         self._collect_output = collect_output
         self._src_voc        = X if not args.init_model else self._model.predictor._src_voc
         self._trg_voc        = Y if not args.init_model else self._model.predictor._trg_voc
-        
+       
         if use_gpu: self._model = self._model.to_gpu()
         # Setup Optimizer
         if optimizer is not None:
@@ -25,9 +30,9 @@ class ChainnClassifier(object):
         fp.write_optimizer_state(self._opt)
         self._model.predictor.save(fp)
 
-    def train(self, x_data, y_data, *args, update=True, **kwargs):
+    def train(self, x_data, y_data, update=True, *args, **kwargs):
         accum_loss, accum_acc, output = self(x_data, y_data, *args, **kwargs)
-        if kwargs.update:
+        if update:
             self._model.zerograds()
             accum_loss.backward()
             accum_loss.unchain_backward()
