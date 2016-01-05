@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--save_len", type=positive_decimal, default=1)
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",choices=["encdec","attn"], default="attn")
+    parser.add_argument("--model",type=str,choices=["encdec","attn"], default="attn")
     return parser.parse_args()
 
 def main():

@@ -56,9 +56,9 @@ class ChainnClassifier(object):
                 self._opt = model_in.read_optimizer_state()
                 name = model_in.read()
                 model = UF.select_model(name, self._all_models)
-                return model.load(model_in, model, self._xp)
+                return model.load(model_in, model, args, self._xp)
         else:
-            return UF.select_model(args.model, self._all_models)(X, Y, embed=args.embed, \
-                    hidden=args.hidden, depth=args.depth, \
-                    input=len(X), output=len(Y), activation=activation, xp=self._xp)
+            args.input  = len(X)
+            args.output = len(Y)
+            return UF.select_model(args.model, self._all_models)(X, Y, args, activation=activation, xp=self._xp)
  

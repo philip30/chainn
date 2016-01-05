@@ -16,15 +16,15 @@ from chainn.model.basic import ChainnBasicModel
 class EncoderDecoder(ChainnBasicModel):
     name = "encdec"    
     
-    def __init__ (self, src_voc, trg_voc, input, output, hidden, depth, embed, activation=F.tanh, xp=np):
+    def __init__ (self, src_voc, trg_voc, args, activation=F.tanh, xp=np):
         super(EncoderDecoder, self).__init__(
-            *self._construct_model(input, output, hidden, depth, embed)
+            *self._construct_model(args.input, args.output, args.hidden, args.depth, args.embed)
         )
-        self._input      = input
-        self._output     = output
-        self._hidden     = hidden
-        self._depth      = depth
-        self._embed      = embed
+        self._input      = args.input
+        self._output     = args.output
+        self._hidden     = args.hidden
+        self._depth      = args.depth
+        self._embed      = args.embed
         self._src_voc    = src_voc
         self._trg_voc    = trg_voc
         self._activation = activation
