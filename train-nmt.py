@@ -31,7 +31,8 @@ def parse_args():
     parser.add_argument("--save_len", type=positive_decimal, default=1)
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",type=str,choices=["encdec","attn"], default="attn")
+    parser.add_argument("--model",type=str,choices=["encdec","attn","efattn"], default="attn")
+    parser.add_argument("--debug",action="store_true")
     return parser.parse_args()
 
 def main():
@@ -42,7 +43,8 @@ def main():
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
-            x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=1)
+            cut = 1 if not args.debug else 0
+            x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
    
     # Setup model
     UF.trace("Setting up classifier")

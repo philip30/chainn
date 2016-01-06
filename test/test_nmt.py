@@ -1,12 +1,31 @@
 import unittest
-
+import numpy as np
+from os import path
+from subprocess import check_call
+from chainer import optimizers
 from chainn.test import TestCase
-from chainn.util import load_nmt_train_data, Vocabulary
+from chainn.util import load_nmt_train_data, Vocabulary, ModelFile
+from chainn.model import EncDecNMT
+
+class Args(object):
+    def __init__(self, model):
+        self.hidden = 5
+        self.use_cpu = True
+        self.embed = 5
+        self.model = model
+        self.depth = 2
+        self.init_model = False
+
+class InitArgs(object):
+    def __init__(self, init):
+        self.init_model = init
+
 
 class TestNMT(TestCase):
     def setUp(self):
-        pass
-
+        self.data = path.join(path.dirname(__file__), "data")
+        self.script = path.join(path.dirname(__file__),"script")
+    
     def test_NMT_read_train(self):
         src=["I am Philip", "I am a student"]
         trg=["私 は フィリップ です", "私 は 学生 です"]
@@ -33,6 +52,45 @@ class TestNMT(TestCase):
         self.assertVocEqual(TRG, y_exp)
         self.assertEqual(x_data, x_data_exp)
         self.assertEqual(y_data, y_data_exp)
+    
+    def test_NMT_read_write(self):
+        for model in ["efattn", "encdec", "attn"]:
+            src_voc = Vocabulary()
+            trg_voc = Vocabulary()
+            for tok in "</s> I am Philip".split():
+                src_voc[tok]
+            for tok in "</s> 私 は フィリップ です".split():
+                trg_voc[tok]
+            model = EncDecNMT(Args(model), src_voc, trg_voc, optimizer=optimizers.SGD())
+    
+            model_out = "/tmp/model-nmt.temp"
+            X, Y  = src_voc, trg_voc
+            
+            # Train with 1 example
+            src = np.array([[X["I"], X["am"], X["Philip"]]], dtype=np.int32)
+            trg = np.array([[Y["私"], Y["は"], Y["フィリップ"], Y["です"]]], dtype=np.int32)
+            
+            model.train(src, trg)
+                
+            # Save
+            with ModelFile(open(model_out, "w")) as fp:
+                model.save(fp)
+    
+            # Load
+            model1 = EncDecNMT(InitArgs(model_out))
+                
+            # Check
+            self.assertModelEqual(model._model.predictor, model1._model.predictor)
+
+    def test_NMT_run(self):
+        print("----- Testing train+using nmt -----")
+        script    = path.join(self.script, "execute_nmt.sh")
+        src       = path.join(self.data, "nmt.en")
+        trg       = path.join(self.data, "nmt.ja")
+        test      = path.join(self.data, "nmt-test.en")
+        train_nmt = path.join("train-nmt.py")
+        test_nmt  = path.join("nmt.py")
+        check_call([script, src, trg, test, train_nmt, test_nmt])
 
 if __name__ == '__main__':
     unittest.main()

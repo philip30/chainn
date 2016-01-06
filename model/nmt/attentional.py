@@ -35,10 +35,10 @@ class Attentional(EncoderDecoder):
         # Alignment model
         ret.append(L.Linear(H, H))          # w_UaF 5
         ret.append(L.Linear(H, H))          # w_UaB 6
-        ret.append(L.Linear(H, H))           # w_wa 7
-        ret.append(L.Linear(H, 1))          # w_va 8
-        # decoder
-        ret.append(L.Linear(H, H))          # w_Ws 9
+        ret.append(L.Linear(H, H))          # w_wa 7
+        ret.append(L.Linear(H, H))          # w_Ws 8
+        ret.append(L.Linear(H, 1))          # w_va 9
+        # Decoding
         ret.append(L.EmbedID(O, 4*H))       # w_v0 10
         ret.append(L.Linear(H, 4*H))        # w_u0 11
         ret.append(L.Linear(H, 4*H))        # w_c0f 12
@@ -57,7 +57,7 @@ class Attentional(EncoderDecoder):
         TRG          = self._trg_voc
 
         # Encoding
-        h    = []
+        h    = [[0,0] for _ in range(src_len)]
         s_cf = Variable(xp.zeros((batch_size, hidden), dtype=np.float32)) # cell state
         s_pf = Variable(xp.zeros((batch_size, hidden), dtype=np.float32)) # outgoing signal
         s_cb = Variable(xp.zeros((batch_size, hidden), dtype=np.float32)) # backward cell state
@@ -72,12 +72,13 @@ class Attentional(EncoderDecoder):
             s_ib       = f(IE(s_xb))
             s_cb, s_pb = F.lstm(s_cb, EHB(s_ib) + HHB(s_pb))
             # concatenating them
-            h.append((s_pf, s_pb))
-       
+            h[j][0] = s_pf
+            h[-j-1][1] = s_pb
+   
         # Initial state for decoder
         h1f, h1b = h[0]
         UaF, UaB = self[5:7]
-        WS       = self[9]
+        WS       = self[7]
         s        = f(WS(h1b)) # initial state
         c        = Variable(xp.zeros((batch_size, hidden), dtype=np.float32)) #initial lstm cell state value
 
@@ -96,7 +97,7 @@ class Attentional(EncoderDecoder):
         batch_size = len(x_data)
         hidden     = self._hidden
         c, s, UaH, h, y_p = self.h
-        WA, VA = self[7:9]
+        WA, VA = self[8:10]
         V0, U0, C0F, C0B, TI = self[10:15]
 
         # Calculating e
