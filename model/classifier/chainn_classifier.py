@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 import chainer.functions as F
 from chainer import cuda
@@ -32,7 +33,7 @@ class ChainnClassifier(object):
 
     def train(self, x_data, y_data, update=True, *args, **kwargs):
         accum_loss, accum_acc, output = self(x_data, y_data, *args, **kwargs)
-        if update:
+        if update and not math.isnan(float(accum_loss.data)):
             self._model.zerograds()
             accum_loss.backward()
             accum_loss.unchain_backward()

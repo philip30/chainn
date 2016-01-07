@@ -63,8 +63,8 @@ class EffectiveAttentional(EncoderDecoder):
             s[i] = F.concat((s[i][0], s[i][1]), axis=1)
         self.h = s[-1]
         self.s = s
-        EF.c = EF.c
-        EB.c = EB.c
+        DF.c = EF.c
+        DB.c = EB.c
         return s
      
     def __call__ (self, x_data, train_ref=None, update=True):
