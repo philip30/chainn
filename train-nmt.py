@@ -29,6 +29,7 @@ def parse_args():
     parser.add_argument("--depth", type=positive, default=1)
     parser.add_argument("--lr", type=positive, default=0.01)
     parser.add_argument("--save_len", type=positive_decimal, default=1)
+    parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
     parser.add_argument("--model",type=str,choices=["encdec","attn","efattn"], default="attn")
@@ -63,22 +64,29 @@ def main():
     for epoch in range(EP):
         trained = 0
         epoch_loss = 0
+        epoch_accuracy = 0
         # Training from the corpus
         UF.trace("Starting Epoch", epoch+1)
         for src, trg in zip(x_data, y_data):
             accum_loss, accum_acc, output = model.train(src, trg)
             epoch_loss += accum_loss
-
+            epoch_accuracy += accum_acc
             # Reporting
-            report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
+            if args.verbose:
+                report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
             UF.trace("Trained %d: %f" % (trained, accum_loss))
+        epoch_loss /= len(x_data)
+        epoch_accuracy /= len(x_data)
 
         # Decaying learning rate
         if (prev_loss < epoch_loss or epoch > 10) and hasattr(opt,'lr'):
             opt.lr *= 0.5
             UF.trace("Reducing LR:", opt.lr)
         prev_loss = epoch_loss
+        
+        UF.trace("Epoch Loss:", float(epoch_loss))
+        UF.trace("Epoch Accuracy:", float(epoch_accuracy))
 
         # saving model
         if (save_ctr + 1) % save_len == 0:
@@ -88,6 +96,10 @@ def main():
 
         gc.collect()
         save_ctr += 1
+   
+    if (save_ctr +1) % save_len != 0:
+        with ModelFile(open(args.model_out, "w")) as model_out:
+            model.save(model_out)
 
 def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
     SRC, TRG = src_voc, trg_voc

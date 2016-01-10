@@ -53,8 +53,8 @@ class EncDecNMT(ChainnClassifier):
                 break
 
         if is_train:
-            accum_loss = accum_loss / batch_size
-            accum_acc  = accum_acc  / batch_size
+            accum_loss = accum_loss / gen_limit
+            accum_acc  = accum_acc  / gen_limit
             return accum_loss, accum_acc, output
         else:
             return output
