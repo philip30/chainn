@@ -13,9 +13,6 @@ from . import RNN
 class LSTMRNN(RNN):
     name="lstm"
 
-    def __init__(self, *args, **kwargs):
-        super(LSTMRNN, self).__init__(*args, **kwargs)
-
     def reset_state(self, *args, **kwargs):
         for item in self:
             if type(item) == LSTM:
@@ -31,7 +28,7 @@ class LSTMRNN(RNN):
         y = f(h_to_y(h))
         return y
 
-    def _generate_layer(self, input, output, hidden, depth, embed):
+    def _construct_model(self, input, output, hidden, depth, embed):
         assert(depth >= 1)
         ret = []
         ret.append(L.EmbedID(input, embed))

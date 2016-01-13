@@ -7,18 +7,15 @@ from chainer import Variable
 
 # Chainn
 from chainn import functions as UF
-from . import EncoderDecoder
+from chainn.model.basic import ChainnBasicModel
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 # This program is an implementation of NEURAL MACHINE TRANSLATION BY JOINTLY LEARNING TO ALIGN AND TRANSLATE
 # (Bahdanau et al., 2015)
 # http://arxiv.org/pdf/1409.0473v6.pdf
 
-class Attentional(EncoderDecoder):
+class Attentional(ChainnBasicModel):
     name = "attn" 
-
-    def __init__(self, *args, **kwargs):
-        super(Attentional, self).__init__(*args, **kwargs)
 
     # Architecture from: https://github.com/odashi/chainer_examples
     def _construct_model(self, input, output, hidden, depth, embed):
