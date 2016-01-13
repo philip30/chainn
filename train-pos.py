@@ -40,8 +40,8 @@ def main():
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.SGD(lr=args.lr)
-    model = ParallelTextClassifier(args, X, Y, opt, not args.use_cpu, activation=F.relu, collect_output=True)
+    opt   = optimizers.Adam()
+    model = ParallelTextClassifier(args, X, Y, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
     opt.add_hook(chainer.optimizer.GradientClipping(10))
@@ -67,8 +67,10 @@ def main():
 
         # Decaying Weight
         if prev_loss < epoch_loss and hasattr(opt,'lr'):
-            opt.lr *= 0.5
-            UF.trace("Reducing LR:", opt.lr)
+            try:
+                opt.lr *= 0.5
+                UF.trace("Reducing LR:", opt.lr)
+            except: pass
         prev_loss = epoch_loss
 
         print("Loss:", epoch_loss, file=sys.stderr)

@@ -39,11 +39,12 @@ def main():
     UF.trace("Loading corpus + dictionary")
     X, train_data = load_lm_data(sys.stdin, batch_size=args.batch)
     if args.dev:
-        X, dev_data = load_lm_data(args.dev, X, batch_size=args.batch)
+        with open(args.dev) as dev_fp:
+            X, dev_data = load_lm_data(dev_fp, X, batch_size=args.batch)
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.SGD(lr=args.lr)
+    opt   = optimizers.Adam()
     model = ParallelTextClassifier(args, X, X, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
@@ -74,8 +75,10 @@ def main():
             
         # Decaying Weight
         if prev_loss < epoch_loss and hasattr(opt,'lr'):
-            opt.lr *= 0.5
-            UF.trace("Reducing LR:", opt.lr)
+            try:
+                opt.lr *= 0.5
+                UF.trace("Reducing LR:", opt.lr)
+            except: pass
         prev_loss = epoch_loss
 
     UF.trace("Saving model to", args.model_out, "...")

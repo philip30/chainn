@@ -133,11 +133,13 @@ class ModelFile:
 
     def write_optimizer_state(self, opt):
         if type(opt) == optimizers.SGD:
-            self.write("sgd\t%.30f" % opt.lr)
+            self.write("sgd\t%f" % opt.lr)
         elif type(opt) == optimizers.AdaDelta:
-            self.write("adadelta")
+            self.write("adadelta\t%f\t%f" % (opt.rho, opt.eps))
         elif type(opt) == optimizers.AdaGrad:
-            self.write("adagrad\t%.30f" %opt.lr)
+            self.write("adagrad\t%f" %opt.lr)
+        elif type(opt) == optimizers.Adam:
+            self.write("adam\t%f\t%f\t%f\t%f" % (opt.alpha, opt.beta1, opt.beta2, opt.eps))
         else:
             raise NotImplementedError(type(opt))
 
@@ -147,9 +149,11 @@ class ModelFile:
         if line[0] == "sgd":
             opt = optimizers.SGD(lr=float(line[1]))
         elif line[0] == "adadelta":
-            opt = optimizers.AdaDelta()
+            opt = optimizers.AdaDelta(rho=float(line[1]),eps=float(line[2]))
         elif line[0] == "adagrad":
             opt = optimizers.AdaGrad(lr=float(line[1]))
+        elif line[0] == "adam":
+            opt = optimizers.Adam(alpha=float(line[1]), beta1=float(line[2]), beta2=float(line[3]), eps=float(line[4]))
         else:
             raise NotImplementedError(line[0])
         return opt
