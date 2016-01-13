@@ -35,7 +35,7 @@ def main():
 
     # data
     UF.trace("Loading corpus + dictionary")
-    train, label, X, Y = load_pos_train_data(sys.stdin.readlines(), batch_size=args.batch)
+    X, Y, data = load_pos_train_data(sys.stdin.readlines(), batch_size=args.batch)
 
     # Setup model
     UF.trace("Setting up classifier")
@@ -52,11 +52,11 @@ def main():
         UF.trace("Epoch %d" % (ep+1))
         epoch_loss = 0
         epoch_acc  = 0
-        for x_data, y_data in zip(train, label):
+        for x_data, y_data in data:
             accum_loss, accum_acc, output = model.train(x_data, y_data)
             epoch_loss += accum_loss
             epoch_acc  += accum_acc
-        epoch_loss /= len(train)
+        epoch_loss /= len(data)
 
         # Decaying Weight
         if prev_loss < epoch_loss and hasattr(opt,'lr'):

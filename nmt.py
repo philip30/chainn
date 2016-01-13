@@ -34,25 +34,21 @@ def main():
         # Batched decoding
         UF.trace("Loading test data...")
         with open(args.src) as src_fp:
-            data_batch, ids = load_nmt_test_data(src_fp, SRC, batch_size=args.batch)
-        output_collector = {}
+            data = load_nmt_test_data(src_fp, SRC, batch_size=args.batch)
         UF.trace("Decoding started.")
-        for src, id_batch in zip(data_batch, ids):
+        for src in data:
             trg = model(src, gen_limit=args.gen_limit)
              
             for trg_out, sent_id in zip(trg, id_batch):
-                output_collector[sent_id] = trg_out
+                print(TRG.str_rpr(trg_out))
 
             if args.verbose:
                 print_result(trg, TRG, src, SRC, sys.stderr)
-
-        for sent_id, output in sorted(output_collector.items(), key=lambda x:x[0]):
-            print(TRG.str_rpr(output))
     else:
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
         for line in sys.stdin:
-            line, id = load_nmt_test_data([line.strip()], SRC)
+            line = list(load_nmt_test_data([line.strip()], SRC))
             trg = model(line[0], gen_limit=args.gen_limit)
             print_result(trg, TRG, line[0], SRC, sys.stdout)
     

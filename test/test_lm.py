@@ -12,7 +12,8 @@ class TestLM(TestCase):
 
     def test_read_train(self):
         train=["I am Philip", "I am student"]
-        word, next_word, X, ids = load_lm_data(train,cut_threshold=1)
+        X, data = load_lm_data(train,cut_threshold=1)
+        
         x_exp = Vocabulary()
         for w in "<s> </s> i am".split():
             x_exp[w]
@@ -27,9 +28,10 @@ class TestLM(TestCase):
                 [[x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp["</s>"]]] \
         ]
 
+        data_exp = list(zip(word_exp, next_word_exp))
+
         self.assertVocEqual(X, x_exp)
-        self.assertEqual(word, word_exp)
-        self.assertEqual(next_word, next_word_exp)
+        self.assertEqual(data, data_exp)
 
     def test_lm_run(self):
         print("----- Testing train+using lm -----")

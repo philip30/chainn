@@ -9,7 +9,7 @@ import chainn.util.functions as UF
 import chainn.util.generators as UG
 
 from collections import defaultdict
-from chainn.util import Vocabulary as Vocab, load_nmt_train_unsorted_data, ModelFile
+from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile
 from chainn.model import EncDecNMT
 from chainer import optimizers
 
@@ -47,7 +47,7 @@ def main():
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
             cut = 1 if not args.debug else 0
-            x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
+            SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
 
     # Setup model
     UF.trace("Setting up classifier")
@@ -69,7 +69,7 @@ def main():
         epoch_accuracy = 0
         # Training from the corpus
         UF.trace("Starting Epoch", epoch+1)
-        for src, trg in zip(x_data, y_data):
+        for src, trg in data:
             accum_loss, accum_acc, output = model.train(src, trg)
             epoch_loss += accum_loss
             epoch_accuracy += accum_acc
@@ -78,8 +78,8 @@ def main():
                 report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
             UF.trace("Trained %d: %f" % (trained, accum_loss))
-        epoch_loss /= len(x_data)
-        epoch_accuracy /= len(x_data)
+        epoch_loss /= len(data)
+        epoch_accuracy /= len(data)
 
         # Decaying learning rate
         if (prev_loss < epoch_loss or epoch > 10) and hasattr(opt,'lr'):

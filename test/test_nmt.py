@@ -29,7 +29,7 @@ class TestNMT(TestCase):
     def test_NMT_3_read_train(self):
         src=["I am Philip", "I am a student"]
         trg=["私 は フィリップ です", "私 は 学生 です"]
-        x_data, y_data, SRC, TRG = load_nmt_train_data(src, trg, cut_threshold=1)
+        SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=1)
         x_exp = Vocabulary(unk=True, eos=True)
         y_exp = Vocabulary(unk=True, eos=True)
         
@@ -48,10 +48,11 @@ class TestNMT(TestCase):
                 [[y_exp["私" ], y_exp["は" ], y_exp.unk_id(), y_exp["です"], y_exp.eos_id()]] \
         ]
 
+        data_exp = list(zip(x_data_exp, y_data_exp))
+
         self.assertVocEqual(SRC, x_exp)
         self.assertVocEqual(TRG, y_exp)
-        self.assertEqual(x_data, x_data_exp)
-        self.assertEqual(y_data, y_data_exp)
+        self.assertEqual(data, data_exp)
     
     def test_NMT_2_read_write(self):
         for model in ["efattn", "encdec", "attn"]:

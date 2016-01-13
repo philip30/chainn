@@ -21,7 +21,7 @@ def parse_args():
     return parser.parse_args()
 
 def main():
-    args = parse_args()
+    args = check_args(parse_args())
     
     # Setup model
     UF.trace("Setting up classifier")
@@ -30,41 +30,45 @@ def main():
 
     # data
     UF.trace("Loading test data + dictionary from stdin")
-    word, next_word, _, sent_ids = load_lm_data(sys.stdin, X, batch_size=args.batch)
+    _, data = load_lm_data(sys.stdin, X, batch_size=args.batch)
        
-    # POS Tagging
-    output_collector = {}
+    # Calculating PPL
+    gen_fp = open(args.gen, "w") if args.gen else None
     UF.trace("Start Calculating PPL")
-    for x_data, y_data, batch_id in zip(word, next_word, sent_ids):
+    corpus_loss = 0
+    for x_data, y_data in data:
         accum_loss, _, output = model.train(x_data, y_data, update=False)
         
         accum_loss = accum_loss / len(x_data)
-        for inp, result, id in zip(x_data, output, batch_id):
-            output_collector[id] = (X.str_rpr(result), accum_loss)
+        for inp, result in zip(x_data, output):
+            # Counting PPL
+            if args.operation == "sppl":
+                print(math.exp(accum_loss))
+            else:
+                corpus_loss += float(accum_loss) / len(x_data)
             
-            if args.verbose:
-                inp    = [Y.tok_rpr(x) for x in inp]
-                result = [X.tok_rpr(x) for x in result]
-                print("INP:", " ".join(inp), file=sys.stderr)
-                print("OUT:", " ".join(result), file=sys.stderr)
-                print("PPL:", math.exp(accum_loss), file=sys.stderr)
-
-    # Printing all output
-    gen_fp = open(args.gen, "w") if args.gen else None
-    operation = args.operation
-    if operation == "sppl":
-        for _, (result, accum_loss) in sorted(output_collector.items(), key=lambda x:x[0]):
-            print(math.exp(accum_loss))
+            # Printing some outputs
+            inp    = X.str_rpr(inp)
+            result = Y.str_rpr(result)
             if gen_fp is not None:
-                print(result, file=gen_fp)
-    elif operation == "cppl":
-        total_loss = 0
-        for _, (result, accum_loss) in output_collector.items():
-            total_loss += accum_loss
-        total_loss = float(total_loss) / len(output_collector)
-        print(math.exp(total_loss))
+                print(" ".join(result), file=gen_fp)
+
+            if args.verbose:
+                print("INP:", inp, file=sys.stderr)
+                print("OUT:", result, file=sys.stderr)
+                print("PPL:", math.exp(accum_loss), file=sys.stderr)
+    
+    if args.operation == "cppl":
+        corpus_loss /= len(data)
+        print(math.exp(corpus_loss))
+
     if gen_fp is not None:
         gen_fp.close()
+
+def check_args(args):
+    if args.operation == "sppl" and args.batch != 1:
+        raise ValueError("Currently sentence based perplexity not supports multi batching.")
+    return args
 
 if __name__ == "__main__":
     main()
