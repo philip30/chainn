@@ -119,6 +119,9 @@ def check_args(args):
     else:
         if args.dict:
             raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
+    if args.model == "attn" or args.model == "encdec":
+        if args.depth > 1:
+            raise ValueError("Currently depth is not supported for both of these models")
 
     return args
 

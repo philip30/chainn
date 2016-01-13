@@ -11,6 +11,7 @@ class RNN(ChainnBasicModel):
     name = "rnn"
 
     def __init__(self, src_voc, trg_voc, args, activation=F.tanh, xp=np):
+        super(RNN, self).__init__(src_voc, trg_voc, args, activation, xp)
         self._h       = None
         
     def reset_state(self, batch=1):

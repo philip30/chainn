@@ -16,10 +16,6 @@ class Args:
         self.depth = 5
 
 class TestEfAttn(TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestRNN, self).__init__(*args, **kwargs)
-        self.Model = EffectiveAttentional
-
     def setUp(self):
         src=["I am Philip", "I am a student"]
         trg=["私 は フィリップ です", "私 は 学生 です"]
