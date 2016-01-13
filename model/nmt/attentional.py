@@ -44,7 +44,7 @@ class Attentional(ChainnBasicModel):
         return ret
 
     # Reset the state of decoder by encoding source sent
-    def reset_state(self, x_data):
+    def reset_state(self, x_data, y_data):
         xp, hidden   = self._xp, self._hidden
         IE, EHF, HHF = self[0:3]
         EHB, HHB     = self[3:5]

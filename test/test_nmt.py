@@ -31,7 +31,7 @@ class TestNMT(TestCase):
         trg=["私 は フィリップ です", "私 は 学生 です"]
         SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=1)
         x_exp = Vocabulary(unk=True, eos=True)
-        y_exp = Vocabulary(unk=True, eos=True)
+        y_exp = Vocabulary(unk=False, eos=True)
         
         for w in "i am".split():
             x_exp[w]

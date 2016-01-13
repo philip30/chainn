@@ -35,15 +35,15 @@ def main():
         UF.trace("Loading test data...")
         with open(args.src) as src_fp:
             data = load_nmt_test_data(src_fp, SRC, batch_size=args.batch)
-        UF.trace("Decoding started.")
-        for src in data:
-            trg = model(src, gen_limit=args.gen_limit)
-             
-            for trg_out, sent_id in zip(trg, id_batch):
-                print(TRG.str_rpr(trg_out))
-
-            if args.verbose:
-                print_result(trg, TRG, src, SRC, sys.stderr)
+            UF.trace("Decoding started.")
+            for src in data:
+                trg = model(src, gen_limit=args.gen_limit)
+                 
+                for trg_out in trg:
+                    print(TRG.str_rpr(trg_out))
+    
+                if args.verbose:
+                    print_result(trg, TRG, src, SRC, sys.stderr)
     else:
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding

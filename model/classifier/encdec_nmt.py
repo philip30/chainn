@@ -30,7 +30,7 @@ class EncDecNMT(ChainnClassifier):
         if y_data is not None:
             gen_limit = len(y_data[0])
         # Perform encoding + Reset state
-        model.predictor.reset_state(x_data)
+        model.predictor.reset_state(x_data, y_data)
 
         output = [[] for _ in range(batch_size)]
         accum_loss, accum_acc = 0, 0 

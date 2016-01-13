@@ -48,7 +48,6 @@ class DictAttentional(EffectiveAttentional):
         xp  = self._xp
         dct = Variable(self._dict)
         batch_size = len(y)
-        
         if len(a) > 0:
             alpha = a[0]
             for i in range(1, len(a)):

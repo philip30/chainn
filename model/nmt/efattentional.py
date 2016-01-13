@@ -41,11 +41,12 @@ class EffectiveAttentional(ChainnBasicModel):
         ret.append(self.OE)         # OE
         return ret
     
-    def reset_state(self, x_data):
+    def reset_state(self, x_data, y_data):
         batch_size = len(x_data)
         src_len    = len(x_data[0])
         xp = self._xp
         f  = self._activation
+        is_train = y_data is not None
         self.EF.reset_state()
         self.EB.reset_state()
 
@@ -54,7 +55,7 @@ class EffectiveAttentional(ChainnBasicModel):
             s_x       = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
             s_xb      = Variable(xp.array([x_data[i][-j-1] for i in range(batch_size)], dtype=np.int32))
             s_i, s_ib = f(self.IE(s_x)), f(self.IE(s_xb))
-            hf, hb    = self.EF(s_i), self.EB(s_ib)
+            hf, hb    = self.EF(s_i, is_train), self.EB(s_ib, is_train)
             # concatenating them
             s[j][0]   = hf
             s[-j-1][1]   = hb
@@ -69,6 +70,7 @@ class EffectiveAttentional(ChainnBasicModel):
         batch_size = len(x_data)
         hidden = self._hidden
         xp = self._xp
+        is_train = train_ref is not None
         # Calculate alignment weights
         a = []
         total_a = 0
@@ -99,7 +101,7 @@ class EffectiveAttentional(ChainnBasicModel):
                 # Testing
                 wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
             w_n = self.OE(wt)
-            self.h = F.concat((self.EF(w_n), self.EB(w_n)), axis=1)
+            self.h = F.concat((self.EF(w_n, is_train), self.EB(w_n, is_train)), axis=1)
         return y
 
     def _score(self, h, s, batch_size=1):
@@ -107,3 +109,4 @@ class EffectiveAttentional(ChainnBasicModel):
 
     def _additional_score(self, y, a, x_data):
         return y
+

@@ -33,7 +33,7 @@ class EncoderDecoder(ChainnBasicModel):
         return ret
     
     # Encoding all the source sentence
-    def reset_state(self, x_data):
+    def reset_state(self, x_data, y_data):
         # Unpacking
         xp, hidden  = self._xp, self._hidden
         row_len     = len(x_data)

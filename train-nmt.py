@@ -51,11 +51,11 @@ def main():
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.AdaGrad(lr=args.lr)
+    opt   = optimizers.Adam()
     model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=True)
 
     # Hooking
-    opt.add_hook(chainer.optimizer.GradientClipping(10))
+    #opt.add_hook(chainer.optimizer.GradientClipping(10))
 
     # Begin Training
     UF.trace("Begin training NMT")
@@ -83,8 +83,10 @@ def main():
 
         # Decaying learning rate
         if (prev_loss < epoch_loss or epoch > 10) and hasattr(opt,'lr'):
-            opt.lr *= 0.5
-            UF.trace("Reducing LR:", opt.lr)
+            try:
+                opt.lr *= 0.5
+                UF.trace("Reducing LR:", opt.lr)
+            except: pass
         prev_loss = epoch_loss
         
         UF.trace("Epoch Loss:", float(epoch_loss))
