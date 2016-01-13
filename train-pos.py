@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--lr", type=float, default=0.1)
+    parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
 def main():
@@ -40,7 +41,7 @@ def main():
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.SGD(lr=args.lr)
-    model = ParallelTextClassifier(args, X, Y, opt, not args.use_cpu, activation=F.relu)
+    model = ParallelTextClassifier(args, X, Y, opt, not args.use_cpu, activation=F.relu, collect_output=True)
     
     # Hooking
     opt.add_hook(chainer.optimizer.GradientClipping(10))
@@ -54,9 +55,15 @@ def main():
         epoch_acc  = 0
         for x_data, y_data in data:
             accum_loss, accum_acc, output = model.train(x_data, y_data)
+            if args.verbose:
+                for src, pos, ref in zip(x_data, output, y_data):
+                    print("INP:", X.str_rpr(src), file=sys.stderr)
+                    print("POS:", Y.str_rpr(pos), file=sys.stderr)
+                    print("REF:", Y.str_rpr(ref), file=sys.stderr)
             epoch_loss += accum_loss
             epoch_acc  += accum_acc
         epoch_loss /= len(data)
+        epoch_acc /= len(data)
 
         # Decaying Weight
         if prev_loss < epoch_loss and hasattr(opt,'lr'):
