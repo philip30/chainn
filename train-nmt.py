@@ -29,21 +29,26 @@ def parse_args():
     parser.add_argument("--depth", type=positive, default=1)
     parser.add_argument("--lr", type=positive, default=0.01)
     parser.add_argument("--save_len", type=positive_decimal, default=1)
+    parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",choices=["encdec","attn"], default="attn")
+    parser.add_argument("--model",type=str,choices=["encdec","attn","efattn","dictattn"], default="efattn")
+    parser.add_argument("--debug",action="store_true")
+    # DictAttn
+    parser.add_argument("--dict",type=str)
     return parser.parse_args()
 
 def main():
     # Preparation
-    args      = parse_args()
+    args      = check_args(parse_args())
     
     # data
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
-            x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=1)
-   
+            cut = 1 if not args.debug else 0
+            x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
+
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.AdaGrad(lr=args.lr)
@@ -61,22 +66,29 @@ def main():
     for epoch in range(EP):
         trained = 0
         epoch_loss = 0
+        epoch_accuracy = 0
         # Training from the corpus
         UF.trace("Starting Epoch", epoch+1)
         for src, trg in zip(x_data, y_data):
             accum_loss, accum_acc, output = model.train(src, trg)
             epoch_loss += accum_loss
-
+            epoch_accuracy += accum_acc
             # Reporting
-            report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
+            if args.verbose:
+                report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
             UF.trace("Trained %d: %f" % (trained, accum_loss))
+        epoch_loss /= len(x_data)
+        epoch_accuracy /= len(x_data)
 
         # Decaying learning rate
         if (prev_loss < epoch_loss or epoch > 10) and hasattr(opt,'lr'):
             opt.lr *= 0.5
             UF.trace("Reducing LR:", opt.lr)
         prev_loss = epoch_loss
+        
+        UF.trace("Epoch Loss:", float(epoch_loss))
+        UF.trace("Epoch Accuracy:", float(epoch_accuracy))
 
         # saving model
         if (save_ctr + 1) % save_len == 0:
@@ -86,6 +98,10 @@ def main():
 
         gc.collect()
         save_ctr += 1
+   
+    if (save_ctr +1) % save_len != 0:
+        with ModelFile(open(args.model_out, "w")) as model_out:
+            model.save(model_out)
 
 def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
     SRC, TRG = src_voc, trg_voc
@@ -95,6 +111,19 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
         out      = TRG.str_rpr(output[index])
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
+
+def check_args(args):
+    if args.model == "dictattn":
+        if not args.dict:
+            raise ValueError("When using dict attn, you need to specify the (--dict) lexical dictionary files.")
+    else:
+        if args.dict:
+            raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
+    if args.model == "attn" or args.model == "encdec":
+        if args.depth > 1:
+            raise ValueError("Currently depth is not supported for both of these models")
+
+    return args
 
 if __name__ == "__main__":
     main()

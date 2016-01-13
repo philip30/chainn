@@ -1,19 +1,44 @@
 import chainer
 import chainer.functions as F
 
+from chainer import cuda
 import numpy as np
 
-class LinearInterpolation(chainer.Link):
-    def __init__(self):
-        super(LinearInterpolation, self).__init__(W=(1,))
-
-    def __call__(self, x):
-        return LI(x, self.W)
-
-class LI(chainer.function.Function):
-    def forward(self, inputs):
+class LinearInterpolationFunction(chainer.function.Function):
+    def _check_type_forward(self, in_types):
         pass
+
+    def forward(self, inputs):
+        W, x, y = inputs
+        if isinstance(x, np.ndarray): # CPU
+            xp = np
+        else:
+            xp = cuda.cupy
+        yp = W * x + (1-W) * y
+        return yp,
 
     def backward(self, inputs, grad_outputs):
-        pass
+        xp = cuda.get_array_module(*inputs)
+        W, x, y = inputs
+        out = grad_outputs[0]
+        gw = cuda.to_cpu(out * (x - y))
+        gx = out * W
+        gy = out * (1-W)
+        ret = 0
+
+        for row in gw:
+            ret += sum(row)
+        return xp.array([ret], dtype=np.float32), gx, gy
+
+def linear_interpolation(W, x, y):
+    return LinearInterpolationFunction()(W, x, y)
+
+class LinearInterpolation(chainer.Link):
+    def __init__(self, length, init=0.5):
+        super(LinearInterpolation, self).__init__()
+        self.add_param("W", 1)
+        self.W.data[...] = init
+
+    def __call__(self, x, y):
+        return linear_interpolation(self.W, x, y)
 

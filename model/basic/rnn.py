@@ -10,21 +10,10 @@ from . import ChainnBasicModel
 class RNN(ChainnBasicModel):
     name = "rnn"
 
-    def __init__(self, src_voc, trg_voc, input, output, hidden, depth, embed, activation=F.tanh, xp=np):
-        super(RNN, self).__init__(
-            *self._generate_layer(input, output, hidden, depth, embed)
-        )
-        self._input   = input
-        self._output  = output
-        self._hidden  = hidden
-        self._depth   = depth
-        self._embed   = embed
+    def __init__(self, src_voc, trg_voc, args, activation=F.tanh, xp=np):
+        super(RNN, self).__init__(src_voc, trg_voc, args, activation, xp)
         self._h       = None
-        self._src_voc = src_voc
-        self._trg_voc = trg_voc
-        self._activation = activation
-        self._xp      = xp
-
+        
     def reset_state(self, batch=1):
         self._h = Variable(self._xp.zeros((batch, self._hidden), dtype=np.float32))
 
@@ -46,7 +35,7 @@ class RNN(ChainnBasicModel):
         return y
 
     # PROTECTED
-    def _generate_layer(self, input, output, hidden, depth, embed):
+    def _construct_model(self, input, output, hidden, depth, embed):
         assert(depth >= 1)
         ret = []
         ret.append(L.EmbedID(input, embed))

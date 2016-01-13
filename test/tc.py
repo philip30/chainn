@@ -41,7 +41,7 @@ class TestCase(unittest.TestCase):
         elif type(xi) == LSTM or type(xi) == chainn.link.lstm.LSTM:
             self.assertLSTMEqual(xi, yi)
         else:
-            raise NotImplementedError(type(xi))
+            pass
 
     def assertLinearEqual(self, x, y):
         self.assertMatrixEqual(x.W.data, y.W.data)
@@ -64,3 +64,6 @@ class TestCase(unittest.TestCase):
         for xrow, yrow in zip(x, y):
             self.assertVectorEqual(xrow, yrow)
         
+    def assertReturn0(self, signal):
+        self.assertEqual(signal, 0)
+
