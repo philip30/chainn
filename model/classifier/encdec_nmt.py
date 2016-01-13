@@ -8,14 +8,14 @@ import chainer.functions as F
 # Chainn
 import chainn.util.functions as UF
 from chainn.model import ChainnClassifier
-from chainn.model.nmt import EncoderDecoder, Attentional, EffectiveAttentional
+from chainn.model.nmt import EncoderDecoder, Attentional, EffectiveAttentional, DictAttentional
 from chainn.util import ModelFile
 from chainn.link import NMTClassifier
 
 class EncDecNMT(ChainnClassifier):
 
     def __init__(self, *args, **kwargs):
-        self._all_models = [EncoderDecoder, Attentional, EffectiveAttentional]
+        self._all_models = [EncoderDecoder, Attentional, EffectiveAttentional, DictAttentional]
         super(EncDecNMT, self).__init__(*args, **kwargs)
         
     def __call__(self, x_data, y_data=None, gen_limit=50):

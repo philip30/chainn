@@ -26,7 +26,7 @@ class TestNMT(TestCase):
         self.data = path.join(path.dirname(__file__), "data")
         self.script = path.join(path.dirname(__file__),"script")
     
-    def test_NMT_read_train(self):
+    def test_NMT_3_read_train(self):
         src=["I am Philip", "I am a student"]
         trg=["私 は フィリップ です", "私 は 学生 です"]
         x_data, y_data, SRC, TRG = load_nmt_train_data(src, trg, cut_threshold=1)
@@ -53,7 +53,7 @@ class TestNMT(TestCase):
         self.assertEqual(x_data, x_data_exp)
         self.assertEqual(y_data, y_data_exp)
     
-    def test_NMT_read_write(self):
+    def test_NMT_2_read_write(self):
         for model in ["efattn", "encdec", "attn"]:
             src_voc = Vocabulary()
             trg_voc = Vocabulary()
@@ -82,7 +82,7 @@ class TestNMT(TestCase):
             # Check
             self.assertModelEqual(model._model.predictor, model1._model.predictor)
 
-    def test_NMT_run(self):
+    def test_NMT_1_run(self):
         print("----- Testing train+using nmt -----")
         script    = path.join(self.script, "execute_nmt.sh")
         src       = path.join(self.data, "nmt.en")

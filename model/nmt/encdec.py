@@ -16,20 +16,6 @@ from chainn.model.basic import ChainnBasicModel
 class EncoderDecoder(ChainnBasicModel):
     name = "encdec"    
     
-    def __init__ (self, src_voc, trg_voc, args, activation=F.tanh, xp=np):
-        super(EncoderDecoder, self).__init__(
-            *self._construct_model(args.input, args.output, args.hidden, args.depth, args.embed)
-        )
-        self._input      = args.input
-        self._output     = args.output
-        self._hidden     = args.hidden
-        self._depth      = args.depth
-        self._embed      = args.embed
-        self._src_voc    = src_voc
-        self._trg_voc    = trg_voc
-        self._activation = activation
-        self._xp         = xp
-
     def _construct_model(self, input, output, hidden, depth, embed):
         assert(depth >= 1)
         I, O, E, H = input, output, embed, hidden

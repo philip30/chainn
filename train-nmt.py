@@ -32,13 +32,15 @@ def parse_args():
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",type=str,choices=["encdec","attn","efattn"], default="attn")
+    parser.add_argument("--model",type=str,choices=["encdec","attn","efattn","dictattn"], default="efattn")
     parser.add_argument("--debug",action="store_true")
+    # DictAttn
+    parser.add_argument("--dict",type=str)
     return parser.parse_args()
 
 def main():
     # Preparation
-    args      = parse_args()
+    args      = check_args(parse_args())
     
     # data
     UF.trace("Loading corpus + dictionary")
@@ -46,7 +48,7 @@ def main():
         with open(args.trg) as trg_fp:
             cut = 1 if not args.debug else 0
             x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
-   
+
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.AdaGrad(lr=args.lr)
@@ -109,6 +111,16 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
         out      = TRG.str_rpr(output[index])
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
+
+def check_args(args):
+    if args.model == "dictattn":
+        if not args.dict:
+            raise ValueError("When using dict attn, you need to specify the (--dict) lexical dictionary files.")
+    else:
+        if args.dict:
+            raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
+
+    return args
 
 if __name__ == "__main__":
     main()
