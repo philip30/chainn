@@ -8,6 +8,8 @@ from chainer.links.connection.linear import Linear
 from chainer.links.connection.embed_id import EmbedID
 from chainer.links.connection.lstm import LSTM
 
+from chainn.link import LinearInterpolation, StackLSTM
+
 from collections import defaultdict
 
 def vtos(v, fmt='%.8e'):
@@ -31,50 +33,56 @@ class ModelFile:
     def write(self, x):
         print(x, file=self.__fp)
 
-    def __write_vector(self, x):
+    def write_vector(self, x):
         self.write(vtos(x))
 
-    def __write_matrix(self, x):
+    def write_matrix(self, x):
         for row in x:
-            self.__write_vector(row)
+            self.write_vector(row)
 
     def read(self):
         return next(self.__fp).strip()
 
-    def __read_vector(self, x, tp):
+    def read_vector(self, x, tp):
         data = stov(self.read(), tp)
         for i in range(len(data)):
             x[i] = data[i]
 
-    def __read_matrix(self, x, tp):
+    def read_matrix(self, x, tp):
         for row in x:
-            self.__read_vector(row, tp)
+            self.read_vector(row, tp)
 
     # Chainer Link Write
     def write_embed(self, f):
-        self.__write_matrix(f.W.data)
+        self.write_matrix(f.W.data)
 
     def write_linear(self, f):
-        self.__write_matrix(f.W.data)
-        self.__write_vector(f.b.data)
+        self.write_matrix(f.W.data)
+        self.write_vector(f.b.data)
 
     def write_lstm(self, f):
-        self.__write_matrix(f.upward.W.data)
-        self.__write_vector(f.upward.b.data)
-        self.__write_matrix(f.lateral.W.data)
+        self.write_matrix(f.upward.W.data)
+        self.write_vector(f.upward.b.data)
+        self.write_matrix(f.lateral.W.data)
     
+    def write_linter(self, f):
+        self.write(f.W.data[0])
+
     # Chainer Link Read
     def read_embed(self, f):
-        self.__read_matrix(f.W.data, float)
+        self.read_matrix(f.W.data, float)
 
     def read_linear(self, f):
-        self.__read_matrix(f.W.data, float)
-        self.__read_vector(f.b.data, float)
+        self.read_matrix(f.W.data, float)
+        self.read_vector(f.b.data, float)
 
     def read_lstm(self, f):
-        self.__read_matrix(f.upward.W.data, float)
-        self.__read_vector(f.upward.b.data, float)
-        self.__read_matrix(f.lateral.W.data, float)
+        self.read_matrix(f.upward.W.data, float)
+        self.read_vector(f.upward.b.data, float)
+        self.read_matrix(f.lateral.W.data, float)
+
+    def read_linter(self, f):
+        f.W.data[...] = float(self.read()) 
 
     def get_file_pointer(self):
         return self.__fp
@@ -87,6 +95,10 @@ class ModelFile:
                 self.read_embed(param[i])
             elif type(item) == LSTM or type(item) == chainn.link.LSTM:
                 self.read_lstm(param[i])
+            elif type(item) == LinearInterpolation:
+                self.read_linter(param[i])
+            elif type(item) == StackLSTM:
+                self.read_param_list(param[i])
             else:
                 raise NotImplementedError(type(item))
 
@@ -98,6 +110,10 @@ class ModelFile:
                 self.write_embed(item)
             elif type(item) == LSTM or type(item) == chainn.link.LSTM:
                 self.write_lstm(item)
+            elif type(item) == LinearInterpolation:
+                self.write_linter(item)
+            elif type(item) == StackLSTM:
+                self.write_param_list(item)
             else:
                 raise NotImplementedError(type(item))
 
