@@ -11,10 +11,14 @@ class Classifier(links.Classifier):
 
 class NMTClassifier(links.Classifier):
     def __call__(self, x=None, t=None, update=True):
-        self.y = self.predictor(x, t, update)
-        self.loss = self.lossfun(self.y, t)
-        if self.compute_accuracy:
-            self.accuracy = accuracy.accuracy(self.y, t)
-        return self.loss
+        self.output = self.predictor(x, t, update)
+        self.y = self.output.y
+        if t is not None:
+            self.loss = self.lossfun(self.y, t)
+            if self.compute_accuracy:
+                self.accuracy = accuracy.accuracy(self.y, t)
+            return self.loss
+        else:
+            return self.output
 
 

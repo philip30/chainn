@@ -19,9 +19,13 @@ def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None
     item_count = 0
     ret = []
     x_batch, y_batch = [], []
+    holder = []
     for src, trg in data:
         src = [convert_to_id(SRC, word, src_count, x_cut) for word in src]
         trg = [convert_to_id(TRG, word, trg_count, y_cut) for word in trg]
+        holder.append((src, trg))
+
+    for src, trg in sorted(holder, key=lambda x: len(x[0])):
         x_batch.append(src), y_batch.append(trg)
         item_count += 1
 

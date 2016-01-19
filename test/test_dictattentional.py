@@ -6,6 +6,7 @@ from chainer import optimizers, Variable, cuda
 
 from chainn.util import Vocabulary, ModelFile, load_nmt_train_data
 from chainn.test import TestCase
+from chainn.model import EncDecNMT
 from chainn.model.nmt import DictAttentional
 
 class Args:
@@ -17,7 +18,12 @@ class Args:
         self.depth = 5
         self.dict = path.join(path.dirname(__file__), "data/dict.txt") 
 
-class TestLSTM(TestCase):
+class InitArgs(object):
+    def __init__(self, init):
+        self.init_model = init
+
+
+class TestDictAttn(TestCase):
     
     def setUp(self):
         src=["I am Philip", "I am a student"]
@@ -29,10 +35,27 @@ class TestLSTM(TestCase):
     def test_dictattn_call(self):
         model = self.model
         for src, trg in self.data:
-            model.reset_state(src)
+            model.reset_state(src, trg)
             for j in range(len(trg)):
                 trg_j = Variable(np.array([trg[i][j] for i in range(len(trg))], dtype=np.int32))
                 model(src, trg_j)
+
+    def test_dictattn_readwrite(self):
+        model = self.model
+
+        model_out = "/tmp/model-dictattn.temp"
+
+        with ModelFile(open(model_out, "w")) as fp:
+            model.save(fp)
+       
+        args = InitArgs(model_out)
+
+        with ModelFile(open(model_out)) as fp:
+            name = fp.read()
+            model1 = model.load(fp, DictAttentional, args, np)
+    
+        self.assertModelEqual(model, model1)
+        self.assertEqual(model._dict, model1._dict)
 
 if __name__ == "__main__":
     unittest.main()

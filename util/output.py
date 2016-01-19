@@ -2,13 +2,9 @@ import sys
 import unicodedata
 
 class DecodingOutput:
-    def __init__(self, decode=None, alignment=None):
-        self.__data = {}
-        self.__data["decode"] = decode
-        self.__data["alignment"] = alignment
-
-    def __getitem__(self, key):
-        return self.__data[key]
+    def __init__(self, y=None, a=None):
+        self.y = y
+        self.a = a
 
 class AlignmentVisualizer:
     def __init__(self, out_dir):

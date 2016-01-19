@@ -26,12 +26,12 @@ class TestEfAttn(TestCase):
     def test_efattn_encode(self):
         model = self.model
         for src, trg in self.data:
-            h = model.reset_state(src)
+            h = model.reset_state(src, trg)
     
     def test_efattn_call(self):
         model = self.model
         for src, trg in self.data:
-            model.reset_state(src)
+            model.reset_state(src, trg)
             for j in range(len(trg)):
                 trg_j = Variable(np.array([trg[i][j] for i in range(len(trg))], dtype=np.int32))
                 model(src, trg_j)

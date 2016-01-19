@@ -9,7 +9,7 @@ from chainer import Variable
 from chainn import functions as UF
 from chainn.link import StackLSTM
 from chainn.model.basic import ChainnBasicModel
-
+from chainn.util import DecodingOutput
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 # This program is an implementation of Effective Approaches to Attention-based Neural Machine Translation
@@ -26,6 +26,7 @@ class EffectiveAttentional(ChainnBasicModel):
         self.IE = L.EmbedID(I,E)
         self.EF = StackLSTM(E,H,depth)
         self.EB = StackLSTM(E,H,depth)
+        self.AE = L.Linear(2*H, 2*H)
         self.WC = L.Linear(4*H, H)
         self.WS = L.Linear(H, O)
         self.OE = L.EmbedID(O, E)
@@ -36,6 +37,8 @@ class EffectiveAttentional(ChainnBasicModel):
         ret.append(self.EF)         # EF
         ret.append(self.EB)         # EB
         # Alignment Weight
+        ret.append(self.AE)
+        # Decoder
         ret.append(self.WC)         # WC
         ret.append(self.WS)         # WS
         ret.append(self.OE)         # OE
@@ -55,7 +58,7 @@ class EffectiveAttentional(ChainnBasicModel):
             s_x       = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
             s_xb      = Variable(xp.array([x_data[i][-j-1] for i in range(batch_size)], dtype=np.int32))
             s_i, s_ib = f(self.IE(s_x)), f(self.IE(s_xb))
-            hf, hb    = self.EF(s_i, is_train), self.EB(s_ib, is_train)
+            hf, hb    = f(self.EF(s_i, is_train)), f(self.EB(s_ib, is_train))
             # concatenating them
             s[j][0]   = hf
             s[-j-1][1]   = hb
@@ -65,17 +68,18 @@ class EffectiveAttentional(ChainnBasicModel):
         self.s = s
         return s
      
-    def __call__ (self, x_data, train_ref=None, update=True):
+    def __call__ (self, x_data, train_ref=None, update=True, debug=False):
         src_len = len(x_data[0])
         batch_size = len(x_data)
         hidden = self._hidden
         xp = self._xp
+        f  = self._activation
         is_train = train_ref is not None
         # Calculate alignment weights
         a = []
         total_a = 0
         for i in range(src_len):
-            score = self._score(self.h, self.s[i], batch_size)
+            score = self._score(self.h, self.AE(self.s[i]), batch_size)
             a.append(score)
             total_a += score
         
@@ -96,13 +100,13 @@ class EffectiveAttentional(ChainnBasicModel):
         if update:
             if train_ref is not None:
                 # Training
-                wt = Variable(xp.array(train_ref.data, dtype=np.int32))
+                wt = train_ref
             else:
                 # Testing
                 wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
-            w_n = self.OE(wt)
-            self.h = F.concat((self.EF(w_n, is_train), self.EB(w_n, is_train)), axis=1)
-        return y
+            w_n = f(self.OE(wt))
+            self.h = F.concat((f(self.EF(w_n, is_train)), f(self.EB(w_n, is_train))), axis=1)
+        return DecodingOutput(y, a)
 
     def _score(self, h, s, batch_size=1):
         return F.exp(F.reshape(F.batch_matmul(h, s, transa=True), (batch_size, 1)))

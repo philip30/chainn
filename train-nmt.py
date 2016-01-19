@@ -52,10 +52,10 @@ def main():
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
-    model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=True)
+    model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=args.verbose)
 
     # Hooking
-    #opt.add_hook(chainer.optimizer.GradientClipping(10))
+    opt.add_hook(chainer.optimizer.GradientClipping(10))
 
     # Begin Training
     UF.trace("Begin training NMT")
@@ -78,6 +78,7 @@ def main():
                 report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
             UF.trace("Trained %d: %f" % (trained, accum_loss))
+            model.report()
         epoch_loss /= len(data)
         epoch_accuracy /= len(data)
 
@@ -88,7 +89,7 @@ def main():
                 UF.trace("Reducing LR:", opt.lr)
             except: pass
         prev_loss = epoch_loss
-        
+       
         UF.trace("Epoch Loss:", float(epoch_loss))
         UF.trace("Epoch Accuracy:", float(epoch_accuracy))
 
@@ -110,7 +111,7 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
     for index in range(len(src)):
         source   = SRC.str_rpr(src[index])
         ref      = TRG.str_rpr(trg[index])
-        out      = TRG.str_rpr(output[index])
+        out      = TRG.str_rpr(output[index][0])
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
 

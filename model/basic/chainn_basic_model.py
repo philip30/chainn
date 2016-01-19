@@ -57,4 +57,7 @@ class ChainnBasicModel(ChainList):
     def _save_details(self, fp):
         pass
     
+    def report(self):
+        pass
+
 

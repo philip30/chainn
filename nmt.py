@@ -18,12 +18,14 @@ def parse_args():
     parser.add_argument("--gen_limit", type=int, default=50)
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--alignment_out", type=str)
     return parser.parse_args()
 
 def main():
     # Preparations
     args  = parse_args()
-    
+    ao_dir = UF.load_stream(args.alignment_out)
+
     # Loading model
     UF.trace("Setting up classifier")
     model = EncDecNMT(args, use_gpu=not args.use_cpu)
@@ -39,19 +41,22 @@ def main():
             for src in data:
                 trg = model(src, gen_limit=args.gen_limit)
                  
-                for trg_out in trg:
+                for trg_out in trg.y:
                     print(TRG.str_rpr(trg_out))
     
                 if args.verbose:
-                    print_result(trg, TRG, src, SRC, sys.stderr)
+                    print_result(trg.y, TRG, src, SRC, sys.stderr)
     else:
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
         for line in sys.stdin:
             line = list(load_nmt_test_data([line.strip()], SRC))
             trg = model(line[0], gen_limit=args.gen_limit)
-            print_result(trg, TRG, line[0], SRC, sys.stdout)
+            print_result(trg.y, TRG, line[0], SRC, sys.stdout)
     
+    if ao_dir is not None:
+        ao_dir.close()
+
 def print_result(trg, TRG, src, SRC, fp=sys.stderr):
     for i, (sent, result) in enumerate(zip(src, trg)):
         print("SRC:", SRC.str_rpr(sent), file=fp)

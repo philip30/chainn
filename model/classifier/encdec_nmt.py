@@ -9,7 +9,7 @@ import chainer.functions as F
 import chainn.util.functions as UF
 from chainn.model import ChainnClassifier
 from chainn.model.nmt import EncoderDecoder, Attentional, EffectiveAttentional, DictAttentional
-from chainn.util import ModelFile
+from chainn.util import ModelFile, DecodingOutput
 from chainn.link import NMTClassifier
 
 class EncDecNMT(ChainnClassifier):
@@ -32,26 +32,37 @@ class EncDecNMT(ChainnClassifier):
         # Perform encoding + Reset state
         model.predictor.reset_state(x_data, y_data)
 
-        output = [[] for _ in range(batch_size)]
+        output    = [[] for _ in range(batch_size)]
+        alignment = [[[] for _ in range(gen_limit)] for _ in range(batch_size)]
         accum_loss, accum_acc = 0, 0 
-
+    
         # Decoding
         for j in range(gen_limit):
             if is_train:
                 s_t = Variable(xp.array([y_data[i][j] for i in range(len(y_data))], dtype=np.int32))
-                accum_loss += self._model(x_data, s_t) # Decode one step
+                accum_loss += model(x_data, s_t) # Decode one step
                 accum_acc  += model.accuracy
+                out = model.output
+            else:
+                out = model(x_data)
             
             # Collecting output
             if not is_train or self._collect_output:
-                y = UF.argmax(model.y.data if is_train else model.predictor(x_data).data)
+                y = UF.argmax(out.y.data)
                 for i in range(len(y)):
                     output[i].append(y[i])
-            
-            # Break if all sentences end with EOL
+                
+                a = out.a
+                if a is not None:
+                    for x in a:
+                        for i, x_a in enumerate(x.data):
+                            alignment[i][j].append(float(x_a))
+                        # Break if all sentences end with EOL
             if not is_train and all(output[i][j] == EOL for i in range(len(output))):
                 break
+        
 
+        output = DecodingOutput(output, alignment)
         if is_train:
             accum_loss = accum_loss / gen_limit
             accum_acc  = accum_acc  / gen_limit
@@ -61,4 +72,7 @@ class EncDecNMT(ChainnClassifier):
     
     def _load_classifier(self):
         return NMTClassifier
+    
+    def report(self):
+        self._model.predictor.report()
 

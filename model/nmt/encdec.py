@@ -7,6 +7,7 @@ from chainer import Variable
 # Chainn
 from chainn import functions as UF
 from chainn.model.basic import ChainnBasicModel
+from chainn.util import DecodingOutput
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 # This program is an implementation of Sequence to Sequence Learning with Neural Networks
@@ -73,5 +74,5 @@ class EncoderDecoder(ChainnBasicModel):
     
             # Updating
             self._h  = F.lstm(s_c, YQ(upd) + QQ(s_q))
-        return y
-
+        return DecodingOutput(y)
+    

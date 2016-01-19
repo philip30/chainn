@@ -18,6 +18,6 @@ for model in dictattn efattn encdec attn; do
     else
         other=""
     fi
-    python3 $train --debug --hidden 5 --embed 5 --model_out $test_dir/tmp.model --epoch 2 --model $model --src $src --trg $trg $other --use_cpu
+    python3 $train --debug --hidden 5 --embed 5 --model_out $test_dir/tmp.model --epoch 2 --model $model --src $src --trg $trg $other
     python3 $test --init_model $test_dir/tmp.model --use_cpu < $tst
 done

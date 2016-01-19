@@ -8,6 +8,7 @@ from chainer import Variable
 # Chainn
 from chainn import functions as UF
 from chainn.model.basic import ChainnBasicModel
+from chainn.util import DecodingOutput
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 # This program is an implementation of NEURAL MACHINE TRANSLATION BY JOINTLY LEARNING TO ALIGN AND TRANSLATE
@@ -126,5 +127,5 @@ class Attentional(ChainnBasicModel):
             else:
                 y_p = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
             self.h = c, s, UaH, h, y_p
-        return y
+        return DecodingOutput(y)
 

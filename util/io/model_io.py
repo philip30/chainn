@@ -40,6 +40,12 @@ class ModelFile:
         for row in x:
             self.write_vector(row)
 
+    def write_2leveldict(self, dct):
+        self.write(str(len(dct)))
+        for key, value in sorted(dct.items()):
+            for key2, value in sorted(value.items()):
+                self.write(str(key) + "\t" + str(key2) + "\t" + str(value))
+
     def read(self):
         return next(self.__fp).strip()
 
@@ -51,6 +57,12 @@ class ModelFile:
     def read_matrix(self, x, tp):
         for row in x:
             self.read_vector(row, tp)
+    
+    def read_2leveldict(self, dct):
+        number = int(self.read())
+        for i in range(number):
+            line = self.read().split("\t")
+            dct[line[0]][line[1]] = float(line[2])
 
     # Chainer Link Write
     def write_embed(self, f):
