@@ -9,7 +9,7 @@ import chainn.util.functions as UF
 import chainn.util.generators as UG
 
 from collections import defaultdict
-from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile
+from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile, AlignmentVisualizer
 from chainn.model import EncDecNMT
 from chainer import optimizers
 
@@ -111,9 +111,11 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
     for index in range(len(src)):
         source   = SRC.str_rpr(src[index])
         ref      = TRG.str_rpr(trg[index])
-        out      = TRG.str_rpr(output[index][0])
+        out      = TRG.str_rpr(output.y[index])
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
+    
+    AlignmentVisualizer.print(output.a, trained, src, output.y, SRC, TRG, sys.stderr)
 
 def check_args(args):
     if args.model == "dictattn":

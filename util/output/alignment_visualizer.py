@@ -1,32 +1,30 @@
+
 import sys
 import unicodedata
 
-class DecodingOutput:
-    def __init__(self, y=None, a=None):
-        self.y = y
-        self.a = a
+def count_len(data):
+    ret = 0
+    for c in data:
+        if unicodedata.east_asian_width(c) == 'W':
+            ret += 2
+        else:
+            ret += 1
+    return ret
 
 class AlignmentVisualizer:
-    def __init__(self, out_dir):
-        self.__fp = None
-        if out_dir:
-            self.__fp = open(out_dir, "w")
-            counter = 0
-
-    def close(self):
-        if self.__fp is not None:
-            self.__fp.close()
-
-    def print(self, data, src, trg, src_voc, trg_voc, precision=3, margin=2):
-        if self.__fp is None:
-            return
-
+    @staticmethod
+    def print(data, start_index, src, trg, src_voc, trg_voc, fp=sys.stderr, precision=3, margin=2):
         # Printing for every input
         for index, out in enumerate(data):
+            print(index+start_index, file=fp)
             str_data = [["" for _ in range(len(out)+1)] for _ in range(len(out[0])+1)]
             src_data = src[index]
             trg_data = trg[index]
-            
+            eos = trg_voc.eos_id()
+
+            if eos in trg_data:
+                trg_data = trg_data[:trg_data.index(eos)+1]
+
             # Header
             for i in range(len(src_data)):
                 str_data[i+1][0] = src_voc.tok_rpr(src_data[i])
@@ -43,13 +41,13 @@ class AlignmentVisualizer:
             max_len = [0 for _ in range(len(str_data[0]))]
             for i in range(len(str_data)):
                 for j in range(len(str_data[i])):
-                    len_str = self.__count_len(str_data[i][j])
+                    len_str = count_len(str_data[i][j])
                     max_len[j] = max(len_str, max_len[j])
 
             # Generate space
             for i in range(len(str_data)):
                 for j in range(len(str_data[i])):
-                    now_len = self.__count_len(str_data[i][j])
+                    now_len = count_len(str_data[i][j])
                     remainder = max_len[j] - now_len + margin
                     front = remainder // 2
                     back = remainder - front
@@ -57,15 +55,7 @@ class AlignmentVisualizer:
             
             # Printing 
             for i in range(len(str_data)):
-                print(" ".join(str_data[i]), file=self.__fp)
+                print(" ".join(str_data[i]), file=fp)
         return
     
-    def __count_len(self, data):
-        ret = 0
-        for c in data:
-            if unicodedata.east_asian_width(c) == 'W':
-                ret += 2
-            else:
-                ret += 1
-        return ret
 

@@ -7,7 +7,7 @@ from chainn import functions as UF
 from chainn import output
 
 from chainn.model import EncDecNMT
-from chainn.util import load_nmt_test_data
+from chainn.util import load_nmt_test_data, AlignmentVisualizer
 
 # default parameter
 def parse_args():
@@ -24,11 +24,11 @@ def parse_args():
 def main():
     # Preparations
     args  = parse_args()
-    ao_dir = UF.load_stream(args.alignment_out)
+    ao_fp = UF.load_stream(args.alignment_out)
 
     # Loading model
     UF.trace("Setting up classifier")
-    model = EncDecNMT(args, use_gpu=not args.use_cpu)
+    model = EncDecNMT(args, use_gpu=not args.use_cpu, collect_output=True)
     SRC, TRG  = model.get_vocabularies()
 
     # Decoding
@@ -37,30 +37,39 @@ def main():
         UF.trace("Loading test data...")
         with open(args.src) as src_fp:
             data = load_nmt_test_data(src_fp, SRC, batch_size=args.batch)
+            ctr  = 0
             UF.trace("Decoding started.")
             for src in data:
                 trg = model(src, gen_limit=args.gen_limit)
-                 
-                for trg_out in trg.y:
-                    print(TRG.str_rpr(trg_out))
-    
+               
+                for trg_i in trg.y:
+                    print(TRG.str_rpr(trg_i))
+                
+                if ao_fp is not None:
+                    AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, ao_fp)
+
                 if args.verbose:
-                    print_result(trg.y, TRG, src, SRC, sys.stderr)
+                    print_result(ctr, trg, TRG, src, SRC, sys.stderr)
+                ctr += len(src)
     else:
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
-        for line in sys.stdin:
+        for i, line in enumerate(sys.stdin):
             line = list(load_nmt_test_data([line.strip()], SRC))
             trg = model(line[0], gen_limit=args.gen_limit)
-            print_result(trg.y, TRG, line[0], SRC, sys.stdout)
+            print_result(i, trg, TRG, line[0], SRC, sys.stdout)
+            print(TRG.str_rpr(trg.y[0]))
     
-    if ao_dir is not None:
-        ao_dir.close()
+    if ao_fp is not None:
+        ao_fp.close()
 
-def print_result(trg, TRG, src, SRC, fp=sys.stderr):
-    for i, (sent, result) in enumerate(zip(src, trg)):
+def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
+    for i, (sent, result) in enumerate(zip(src, trg.y)):
+        print(ctr + i, file=fp)
         print("SRC:", SRC.str_rpr(sent), file=fp)
         print("TRG:", TRG.str_rpr(result), file=fp)
+
+    AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp)
 
 if __name__ == "__main__":
     main()
