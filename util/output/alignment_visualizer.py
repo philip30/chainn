@@ -51,7 +51,7 @@ class AlignmentVisualizer:
                     remainder = max_len[j] - now_len + margin
                     front = remainder // 2
                     back = remainder - front
-                    str_data[i][j] = (" " * front) + str_data[i][j] + (" " * back)
+                    str_data[i][j] = (" " * (front-1)) + str_data[i][j] + (" " * back)
             
             # Printing 
             for i in range(len(str_data)):

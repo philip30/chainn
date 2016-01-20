@@ -20,12 +20,20 @@ class InitArgs(object):
     def __init__(self, init):
         self.init_model = init
 
-
 class TestNMT(TestCase):
     def setUp(self):
         self.data = path.join(path.dirname(__file__), "data")
         self.script = path.join(path.dirname(__file__),"script")
-    
+       
+        # Run
+        script    = path.join(self.script, "execute_nmt.sh")
+        src       = path.join(self.data, "nmt.en")
+        trg       = path.join(self.data, "nmt.ja")
+        test      = path.join(self.data, "nmt-test.en")
+        train_nmt = path.join("train-nmt.py")
+        test_nmt  = path.join("nmt.py")
+        self.run = lambda x, y: check_call([script, src, trg, test, train_nmt, test_nmt, x, y])
+
     def test_NMT_3_read_train(self):
         src=["I am Philip", "I am a student"]
         trg=["私 は フィリップ です", "私 は 学生 です"]
@@ -82,16 +90,18 @@ class TestNMT(TestCase):
             # Check
             self.assertModelEqual(model._model.predictor, model1._model.predictor)
 
-    def test_NMT_1_run(self):
-        print("----- Testing train+using nmt -----")
-        script    = path.join(self.script, "execute_nmt.sh")
-        src       = path.join(self.data, "nmt.en")
-        trg       = path.join(self.data, "nmt.ja")
-        test      = path.join(self.data, "nmt-test.en")
-        train_nmt = path.join("train-nmt.py")
-        test_nmt  = path.join("nmt.py")
-        check_call([script, src, trg, test, train_nmt, test_nmt])
+    def test_NMT_encdec(self):
+        self.run("encdec", "")
 
-if __name__ == '__main__':
+    def test_NMT_attn(self):
+        self.run("attn", "")
+
+    def test_NMT_efattn(self):
+        self.run("efattn","")
+
+    def test_NMT_dictattn(self):
+        self.run("dictattn", "--dict test/data/dict.txt")
+        
+
+if __name__ == "__main__":
     unittest.main()
-

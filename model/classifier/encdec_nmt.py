@@ -58,6 +58,8 @@ class EncDecNMT(ChainnClassifier):
                         for i, x_a in enumerate(x.data):
                             alignment[i][j].append(float(x_a))
                         # Break if all sentences end with EOL
+                else:
+                    alignment = None
             if not is_train and all(output[i][j] == EOL for i in range(len(output))):
                 break
         

@@ -27,7 +27,7 @@ def linear_interpolation(W, x, y):
     return LinearInterpolationFunction()(W, x, y)
 
 class LinearInterpolation(chainer.Link):
-    def __init__(self, length, init=0.5):
+    def __init__(self, init=0.5):
         super(LinearInterpolation, self).__init__()
         self.add_param("W", 1)
         self.W.data[...] = init

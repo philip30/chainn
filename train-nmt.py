@@ -54,9 +54,6 @@ def main():
     opt   = optimizers.Adam()
     model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=args.verbose)
 
-    # Hooking
-    opt.add_hook(chainer.optimizer.GradientClipping(10))
-
     # Begin Training
     UF.trace("Begin training NMT")
     EP         = args.epoch
@@ -114,8 +111,9 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
         out      = TRG.str_rpr(output.y[index])
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
-    
-    AlignmentVisualizer.print(output.a, trained, src, output.y, SRC, TRG, sys.stderr)
+   
+    if output.a is not None:
+        AlignmentVisualizer.print(output.a, trained, src, output.y, SRC, TRG, sys.stderr)
 
 def check_args(args):
     if args.model == "dictattn":

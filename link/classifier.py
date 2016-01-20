@@ -15,6 +15,7 @@ class NMTClassifier(links.Classifier):
         self.y = self.output.y
         if t is not None:
             self.loss = self.lossfun(self.y, t)
+            
             if self.compute_accuracy:
                 self.accuracy = accuracy.accuracy(self.y, t)
             return self.loss

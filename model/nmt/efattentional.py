@@ -19,7 +19,6 @@ from chainn.util import DecodingOutput
 class EffectiveAttentional(ChainnBasicModel):
     name = "efattn" 
     
-    # Architecture from: https://github.com/odashi/chainer_examples
     def _construct_model(self, input, output, hidden, depth, embed):
         I, O, E, H = input, output, embed, hidden
         ret = []
@@ -27,6 +26,7 @@ class EffectiveAttentional(ChainnBasicModel):
         self.EF = StackLSTM(E,H,depth)
         self.EB = StackLSTM(E,H,depth)
         self.AE = L.Linear(2*H, 2*H)
+        self.AH = L.Linear(2*H, 2*H)
         self.WC = L.Linear(4*H, H)
         self.WS = L.Linear(H, O)
         self.OE = L.EmbedID(O, E)
@@ -38,6 +38,8 @@ class EffectiveAttentional(ChainnBasicModel):
         ret.append(self.EB)         # EB
         # Alignment Weight
         ret.append(self.AE)
+        ret.append(self.AH)
+        ret.append(self.AS)
         # Decoder
         ret.append(self.WC)         # WC
         ret.append(self.WS)         # WS
@@ -57,7 +59,7 @@ class EffectiveAttentional(ChainnBasicModel):
         for j in range(src_len):
             s_x       = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
             s_xb      = Variable(xp.array([x_data[i][-j-1] for i in range(batch_size)], dtype=np.int32))
-            s_i, s_ib = f(self.IE(s_x)), f(self.IE(s_xb))
+            s_i, s_ib = self.IE(s_x), self.IE(s_xb)
             hf, hb    = f(self.EF(s_i, is_train)), f(self.EB(s_ib, is_train))
             # concatenating them
             s[j][0]   = hf
@@ -85,16 +87,16 @@ class EffectiveAttentional(ChainnBasicModel):
         
         for i in range(len(a)):
             a[i] = a[i] / total_a
-        
+
         # Calculate context vector
         c = 0
         for i in range(src_len):
             c += F.reshape(F.batch_matmul(self.s[i], a[i]), (batch_size, 2*hidden))
-        ht = self.WC(F.concat((self.h, c), axis=1))
-        y = self.WS(ht)
+        ht = self.WC(F.concat((self.h, f(c)), axis=1))
+        yp = self.WS(ht)
         
         # Enhance y
-        y = self._additional_score(y, a, x_data)
+        y = self._additional_score(yp, a, x_data)
 
         # Calculate next hidden hidden state
         if update:
@@ -104,12 +106,13 @@ class EffectiveAttentional(ChainnBasicModel):
             else:
                 # Testing
                 wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
-            w_n = f(self.OE(wt))
+            w_n = self.OE(wt)
             self.h = F.concat((f(self.EF(w_n, is_train)), f(self.EB(w_n, is_train))), axis=1)
         return DecodingOutput(y, a)
 
     def _score(self, h, s, batch_size=1):
-        return F.exp(F.reshape(F.batch_matmul(h, s, transa=True), (batch_size, 1)))
+        f = self._activation
+        return F.exp(f(F.reshape(F.batch_matmul(self.AH(h), s, transa=True), (batch_size, 1))))
 
     def _additional_score(self, y, a, x_data):
         return y

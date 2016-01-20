@@ -13,7 +13,7 @@ def trace(*args, debug_level=0):
         sys.stderr.flush()
 
 def load_stream(fp):
-    if fp is None:
+    if fp is None or len(fp) == 0:
         return None
     elif fp == "STDOUT":
         return sys.stdout

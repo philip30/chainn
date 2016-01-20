@@ -41,7 +41,8 @@ class ModelFile:
             self.write_vector(row)
 
     def write_2leveldict(self, dct):
-        self.write(str(len(dct)))
+        total = sum(len(value) for key, value in dct.items())
+        self.write(total)
         for key, value in sorted(dct.items()):
             for key2, value in sorted(value.items()):
                 self.write(str(key) + "\t" + str(key2) + "\t" + str(value))

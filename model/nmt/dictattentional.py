@@ -1,5 +1,5 @@
 import numpy as np
-import sys
+import sys, math
 from collections import defaultdict
 
 import chainer.functions as F
@@ -16,6 +16,7 @@ from chainn.model.nmt import EffectiveAttentional
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 
+eps = 0.001
 class DictAttentional(EffectiveAttentional):
     name = "dictattn" 
 
@@ -23,9 +24,9 @@ class DictAttentional(EffectiveAttentional):
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._dict = self._load_dictionary(args.dict)
 
-    def _construct_model(self, *args, **kwargs):
-        ret = super(DictAttentional, self)._construct_model(*args, **kwargs)
-        self.WD = LinearInterpolation(args[1])
+    def _construct_model(self, input, output, hidden, depth, embed):
+        ret = super(DictAttentional, self)._construct_model(input, output, hidden, depth, embed)
+        self.WD = LinearInterpolation()
         ret.append(self.WD)
         return ret
  
@@ -33,16 +34,25 @@ class DictAttentional(EffectiveAttentional):
         if type(dict_dir) is not str:
             return dict_dir
         dct = defaultdict(lambda:{})
+        mdc = defaultdict(lambda:0)
         with open(dict_dir) as fp:
             for line in fp:
                 line = line.strip().split()
-                dct[line[0]][line[1]] = float(line[2])
+                src, trg = line[1], line[0]
+                if src in self._src_voc and trg in self._trg_voc:
+                    prob = float(line[2])
+                    dct[src][trg] = prob
+                    #if prob > mdc[src]:
+                    #    mdc[src] = prob
+                    #    dct[src] = {trg:prob}
+
         return dict(dct)
 
     def _additional_score(self, y, a, src):
+        SRC = self._src_voc
         TRG = self._trg_voc
         dct = self._dict
-      
+        f   = self._activation
         # Copy value from a
         alpha = []
         for row in a:
@@ -55,13 +65,14 @@ class DictAttentional(EffectiveAttentional):
         y_dict = [[0 for _ in range(len(TRG))] for _ in range(len(src))]
         for i, batch in enumerate(src):
             for j, src_word in enumerate(batch):
+                src_word = SRC.tok_rpr(src_word)
                 if src_word in dct:
-                    for trg_word, prob in dct[SRC.tok_rpr(src_word)].items():
-                        y_dict[i][TRG.tok_rpr(trg_word)] += prob * alpha[i][j]
-        y_dict = Variable(self._xp.array(y_dict, dtype=np.float32))
-        
+                    for trg_word, prob in dct[src_word].items():
+                        y_dict[i][TRG[trg_word]] += prob * alpha[j][i]
+        y_dict = F.log(eps + Variable(self._xp.array(y_dict, dtype=np.float32)))
+    
         # Linear Interpolation
-        y = self.WD(y, y_dict)
+        y = self.WD(y_dict, y)
         return y
 
     @staticmethod
@@ -69,7 +80,6 @@ class DictAttentional(EffectiveAttentional):
         args.dict = defaultdict(lambda:{})
         fp.read_2leveldict(args.dict)
         args.dict = dict(args.dict)
-        ChainnBasicModel._load_details(fp, args, xp, SRC, TRG)
              
     def _save_details(self, fp):
         super(DictAttentional, self)._save_details(fp)
