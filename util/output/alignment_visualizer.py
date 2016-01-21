@@ -25,11 +25,6 @@ class AlignmentVisualizer:
             if eos in trg_data:
                 trg_data = trg_data[:trg_data.index(eos)+1]
            
-            print(len(trg_data))
-            print(len(src_data))
-            print(len(out))
-            print(len(out[0]))
-
             str_data = [["" for _ in range(len(trg_data)+1)] for _ in range(len(src_data)+1)]
             # Header
             for i in range(len(src_data)):
