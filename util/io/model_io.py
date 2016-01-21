@@ -1,6 +1,7 @@
 import chainn
 import chainer
 import chainer.functions as F
+from chainn.util import functions as UF
 import numpy as np
 
 from chainer import optimizers
@@ -40,6 +41,13 @@ class ModelFile:
         for row in x:
             self.write_vector(row)
 
+    def write_2leveldict(self, dct):
+        total = sum(len(value) for key, value in dct.items())
+        self.write(total)
+        for key, value in sorted(dct.items()):
+            for key2, value in sorted(value.items()):
+                self.write(str(key) + "\t" + str(key2) + "\t" + str(value))
+
     def read(self):
         return next(self.__fp).strip()
 
@@ -51,6 +59,12 @@ class ModelFile:
     def read_matrix(self, x, tp):
         for row in x:
             self.read_vector(row, tp)
+    
+    def read_2leveldict(self, dct):
+        number = int(self.read())
+        for i in range(number):
+            line = self.read().split("\t")
+            dct[line[0]][line[1]] = float(line[2])
 
     # Chainer Link Write
     def write_embed(self, f):
@@ -70,24 +84,29 @@ class ModelFile:
 
     # Chainer Link Read
     def read_embed(self, f):
+        UF.trace("Reading Embed", debug_level=1)
         self.read_matrix(f.W.data, float)
 
     def read_linear(self, f):
+        UF.trace("Reading Linear", debug_level=1)
         self.read_matrix(f.W.data, float)
         self.read_vector(f.b.data, float)
 
     def read_lstm(self, f):
+        UF.trace("Reading LSTM", debug_level=1)
         self.read_matrix(f.upward.W.data, float)
         self.read_vector(f.upward.b.data, float)
         self.read_matrix(f.lateral.W.data, float)
 
     def read_linter(self, f):
+        UF.trace("Reading Linear Interpolation", debug_level=1)
         f.W.data[...] = float(self.read()) 
 
     def get_file_pointer(self):
         return self.__fp
 
     def read_param_list(self, param):
+        UF.trace("Reading Param List", debug_level=1)
         for i, item in enumerate(param):
             if type(item) == Linear:
                 self.read_linear(param[i])
@@ -126,6 +145,7 @@ class ModelFile:
             raise NotImplementedError(type(f))
 
     def read_activation(self):
+        UF.trace("Reading Activation", debug_level=1)
         line = self.read()
         if line == "tanh": return F.tanh
         elif line == "relu": return F.relu
@@ -133,23 +153,28 @@ class ModelFile:
 
     def write_optimizer_state(self, opt):
         if type(opt) == optimizers.SGD:
-            self.write("sgd\t%.30f" % opt.lr)
+            self.write("sgd\t%f" % opt.lr)
         elif type(opt) == optimizers.AdaDelta:
-            self.write("adadelta")
+            self.write("adadelta\t%f\t%f" % (opt.rho, opt.eps))
         elif type(opt) == optimizers.AdaGrad:
-            self.write("adagrad\t%.30f" %opt.lr)
+            self.write("adagrad\t%f" %opt.lr)
+        elif type(opt) == optimizers.Adam:
+            self.write("adam\t%f\t%f\t%f\t%f" % (opt.alpha, opt.beta1, opt.beta2, opt.eps))
         else:
             raise NotImplementedError(type(opt))
 
     def read_optimizer_state(self):
+        UF.trace("Reading Optimizer State", debug_level=1)
         line = self.read().split("\t")
         opt = None
         if line[0] == "sgd":
             opt = optimizers.SGD(lr=float(line[1]))
         elif line[0] == "adadelta":
-            opt = optimizers.AdaDelta()
+            opt = optimizers.AdaDelta(rho=float(line[1]),eps=float(line[2]))
         elif line[0] == "adagrad":
             opt = optimizers.AdaGrad(lr=float(line[1]))
+        elif line[0] == "adam":
+            opt = optimizers.Adam(alpha=float(line[1]), beta1=float(line[2]), beta2=float(line[3]), eps=float(line[4]))
         else:
             raise NotImplementedError(line[0])
         return opt

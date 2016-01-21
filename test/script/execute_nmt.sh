@@ -9,15 +9,8 @@ trg=$2
 tst=$3
 train=$4
 test=$5
-other=$6
+model=$6
+other=$7
 
-mkdir -p $test_dir
-for model in dictattn efattn encdec attn; do 
-    if [ $model = "dictattn" ]; then
-        other="--dict test/data/dict.txt"
-    else
-        other=""
-    fi
-    python3 $train --debug --hidden 5 --embed 5 --model_out $test_dir/tmp.model --epoch 2 --model $model --src $src --trg $trg $other --use_cpu
-    python3 $test --init_model $test_dir/tmp.model --use_cpu < $tst
-done
+python3 $train --debug --hidden 5 --embed 5 --model_out $test_dir/tmp.model --epoch 2 --model $model --src $src --trg $trg $other --verbose
+python3 $test --init_model $test_dir/tmp.model --use_cpu --verbose < $tst

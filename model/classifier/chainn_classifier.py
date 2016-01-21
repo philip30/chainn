@@ -32,11 +32,11 @@ class ChainnClassifier(object):
         self._model.predictor.save(fp)
 
     def train(self, x_data, y_data, update=True, *args, **kwargs):
+        self._model.zerograds()
         accum_loss, accum_acc, output = self(x_data, y_data, *args, **kwargs)
         if update and not math.isnan(float(accum_loss.data)):
-            self._model.zerograds()
             accum_loss.backward()
-            accum_loss.unchain_backward()
+            #accum_loss.unchain_backward()
             self._opt.update()
         return accum_loss.data, accum_acc.data, output
 
@@ -62,4 +62,7 @@ class ChainnClassifier(object):
             args.input  = len(X)
             args.output = len(Y)
             return UF.select_model(args.model, self._all_models)(X, Y, args, activation=activation, xp=self._xp)
- 
+    
+    def report(self):
+        pass
+

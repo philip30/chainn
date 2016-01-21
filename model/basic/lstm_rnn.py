@@ -18,13 +18,13 @@ class LSTMRNN(RNN):
             if type(item) == LSTM:
                 item.reset_state()
 
-    def __call__(self, word, update=True):
+    def __call__(self, word, update=True, is_train=False):
         f = self._activation
         embed  = self[0]
         h_to_y = self[-1]
         x = embed(word)
         for i in range(1,len(self)-1):
-            h = self[i](x if i == 1 else h, update)
+            h = F.dropout(self[i](x if i == 1 else h, update), train=is_train)
         y = f(h_to_y(h))
         return y
 

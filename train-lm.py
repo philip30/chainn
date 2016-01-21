@@ -37,13 +37,14 @@ def main():
 
     # data
     UF.trace("Loading corpus + dictionary")
-    word, next_word, X, _ = load_lm_data(sys.stdin, batch_size=args.batch)
+    X, train_data = load_lm_data(sys.stdin, batch_size=args.batch)
     if args.dev:
-        word_dev, next_word_dev, _, _ = load_lm_data(args.dev, x_ids=X, batch_size=args.batch)
+        with open(args.dev) as dev_fp:
+            X, dev_data = load_lm_data(dev_fp, X, batch_size=args.batch)
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.SGD(lr=args.lr)
+    opt   = optimizers.Adam()
     model = ParallelTextClassifier(args, X, X, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
@@ -55,27 +56,29 @@ def main():
     for ep in range(epoch_total):
         UF.trace("Epoch %d" % (ep+1))
         epoch_loss = 0
-        for x_data, y_data in zip(word, next_word):
+        for x_data, y_data in train_data:
             accum_loss, accum_acc, output = model.train(x_data, y_data)
             epoch_loss += float(accum_loss)
-        epoch_loss /= len(word)
+        epoch_loss /= len(train_data)
 
         print("PPL Train:", math.exp(epoch_loss), file=sys.stderr)
 
         # Evaluate on Dev Set
         if args.dev:
             dev_loss = 0
-            for x_data, y_data in zip(word_dev, next_word_dev):
+            for x_data, y_data in dev_data:
                 accum_loss, _, _ = model.train(x_data, y_data, update=False)
                 dev_loss   += float(accum_loss)
-            dev_loss /= len(word_dev)
+            dev_loss /= len(dev_data)
             epoch_loss = dev_loss
             print("PPL Dev:", math.exp(dev_loss), file=sys.stderr)
             
         # Decaying Weight
         if prev_loss < epoch_loss and hasattr(opt,'lr'):
-            opt.lr *= 0.5
-            UF.trace("Reducing LR:", opt.lr)
+            try:
+                opt.lr *= 0.5
+                UF.trace("Reducing LR:", opt.lr)
+            except: pass
         prev_loss = epoch_loss
 
     UF.trace("Saving model to", args.model_out, "...")

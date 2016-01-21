@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--lr", type=float, default=0.1)
+    parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
 def main():
@@ -35,11 +36,11 @@ def main():
 
     # data
     UF.trace("Loading corpus + dictionary")
-    train, label, X, Y = load_pos_train_data(sys.stdin.readlines(), batch_size=args.batch)
+    X, Y, data = load_pos_train_data(sys.stdin.readlines(), batch_size=args.batch)
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.SGD(lr=args.lr)
+    opt   = optimizers.Adam()
     model = ParallelTextClassifier(args, X, Y, opt, not args.use_cpu, activation=F.relu)
     
     # Hooking
@@ -52,16 +53,24 @@ def main():
         UF.trace("Epoch %d" % (ep+1))
         epoch_loss = 0
         epoch_acc  = 0
-        for x_data, y_data in zip(train, label):
+        for x_data, y_data in data:
             accum_loss, accum_acc, output = model.train(x_data, y_data)
+            if args.verbose:
+                for src, pos, ref in zip(x_data, output, y_data):
+                    print("INP:", X.str_rpr(src), file=sys.stderr)
+                    print("POS:", Y.str_rpr(pos), file=sys.stderr)
+                    print("REF:", Y.str_rpr(ref), file=sys.stderr)
             epoch_loss += accum_loss
             epoch_acc  += accum_acc
-        epoch_loss /= len(train)
+        epoch_loss /= len(data)
+        epoch_acc /= len(data)
 
         # Decaying Weight
         if prev_loss < epoch_loss and hasattr(opt,'lr'):
-            opt.lr *= 0.5
-            UF.trace("Reducing LR:", opt.lr)
+            try:
+                opt.lr *= 0.5
+                UF.trace("Reducing LR:", opt.lr)
+            except: pass
         prev_loss = epoch_loss
 
         print("Loss:", epoch_loss, file=sys.stderr)

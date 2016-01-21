@@ -78,7 +78,7 @@ class Vocabulary(object):
     @staticmethod
     def load(fp):
         size = int(fp.read())
-        self = Vocabulary()
+        self = Vocabulary(unk=False,eos=False)
         for i in range(size):
             index, word = fp.read().strip().split("\t")
             self[word] = int(index)

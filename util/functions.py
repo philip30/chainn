@@ -12,6 +12,16 @@ def trace(*args, debug_level=0):
         print(datetime.datetime.now(), '...', *args, file=sys.stderr)
         sys.stderr.flush()
 
+def load_stream(fp):
+    if fp is None or len(fp) == 0:
+        return None
+    elif fp == "STDOUT":
+        return sys.stdout
+    elif fp == "STDERR":
+        return sys.stderr
+    else:
+        return open(fp, "w")
+
 def print_argmax(data, file=sys.stdout):
     data = cuda.to_cpu(data).argmax(1)
     for x in data:

@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 
-import sys
-import argparse
-import gc
-import chainer
+import sys, argparse, math, gc, chainer
 import chainer.functions as F
 import chainn.util.functions as UF
-import chainn.util.generators as UG
 
 from collections import defaultdict
-from chainn.util import Vocabulary as Vocab, load_nmt_train_unsorted_data, ModelFile
+from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile, AlignmentVisualizer
 from chainn.model import EncDecNMT
 from chainer import optimizers
 
@@ -47,15 +43,12 @@ def main():
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
             cut = 1 if not args.debug else 0
-            x_data, y_data, SRC, TRG = load_nmt_train_unsorted_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
+            SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
 
     # Setup model
     UF.trace("Setting up classifier")
-    opt   = optimizers.AdaGrad(lr=args.lr)
-    model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=True)
-
-    # Hooking
-    opt.add_hook(chainer.optimizer.GradientClipping(10))
+    opt   = optimizers.Adam()
+    model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=args.verbose)
 
     # Begin Training
     UF.trace("Begin training NMT")
@@ -69,7 +62,7 @@ def main():
         epoch_accuracy = 0
         # Training from the corpus
         UF.trace("Starting Epoch", epoch+1)
-        for src, trg in zip(x_data, y_data):
+        for src, trg in data:
             accum_loss, accum_acc, output = model.train(src, trg)
             epoch_loss += accum_loss
             epoch_accuracy += accum_acc
@@ -78,17 +71,21 @@ def main():
                 report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
             UF.trace("Trained %d: %f" % (trained, accum_loss))
-        epoch_loss /= len(x_data)
-        epoch_accuracy /= len(x_data)
+            model.report()
+        epoch_loss /= len(data)
+        epoch_accuracy /= len(data)
 
         # Decaying learning rate
         if (prev_loss < epoch_loss or epoch > 10) and hasattr(opt,'lr'):
-            opt.lr *= 0.5
-            UF.trace("Reducing LR:", opt.lr)
+            try:
+                opt.lr *= 0.5
+                UF.trace("Reducing LR:", opt.lr)
+            except: pass
         prev_loss = epoch_loss
-        
+       
         UF.trace("Epoch Loss:", float(epoch_loss))
         UF.trace("Epoch Accuracy:", float(epoch_accuracy))
+        UF.trace("PPL:", math.exp(float(epoch_loss)))
 
         # saving model
         if (save_ctr + 1) % save_len == 0:
@@ -108,9 +105,12 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
     for index in range(len(src)):
         source   = SRC.str_rpr(src[index])
         ref      = TRG.str_rpr(trg[index])
-        out      = TRG.str_rpr(output[index])
+        out      = TRG.str_rpr(output.y[index])
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
+   
+    if output.a is not None:
+        AlignmentVisualizer.print(output.a, trained, src, output.y, SRC, TRG, sys.stderr)
 
 def check_args(args):
     if args.model == "dictattn":

@@ -14,8 +14,9 @@ class TestPOS(TestCase):
 
     def test_read_train(self):
         train = ["I_NNP am_VBZ Philip_NNP", "I_NNP am_VBZ student_NN"]
-        data, labels, X, Y = load_pos_train_data(train)
-        
+        X, Y, data = load_pos_train_data(train)
+       
+        data = list(data)
         # Check Vocabulary
         x_exp, y_exp = Vocabulary(), Vocabulary(unk=False)
         x_exp["I"], x_exp["am"]
@@ -25,7 +26,7 @@ class TestPOS(TestCase):
         self.assertVocEqual(Y, y_exp)
         
         # Check data
-        data_exp = [\
+        word_exp = [\
                 [[x_exp["I"], x_exp["am"], x_exp.unk_id()]],\
                 [[x_exp["I"], x_exp["am"], x_exp.unk_id()]]\
         ]
@@ -35,15 +36,16 @@ class TestPOS(TestCase):
                 [[y_exp["NNP"], y_exp["VBZ"], y_exp["NN"]]]\
         ]
 
+        data_exp = [(x,y) for x, y in zip(word_exp, label_exp)]
+
         self.assertEqual(data, data_exp)
-        self.assertEqual(labels, label_exp)
 
     def test_read_test(self):
         test = ["I live in Japan"]
         X = Vocabulary()
         X["I"], X["live"], X["in"]
 
-        data, _ = load_pos_test_data(test, X)
+        data = list(load_pos_test_data(test, X))
 
         data_exp = [\
                 [[X["I"], X["live"], X["in"], X.unk_id()]]\

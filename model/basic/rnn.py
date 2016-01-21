@@ -17,7 +17,7 @@ class RNN(ChainnBasicModel):
     def reset_state(self, batch=1):
         self._h = Variable(self._xp.zeros((batch, self._hidden), dtype=np.float32))
 
-    def __call__(self, word, update=True):
+    def __call__(self, word, update=True, is_train=False):
         if self._h is None:
             raise Exception("Need to call reset_state() before using the model!")
         embed  = self[0]
@@ -28,7 +28,7 @@ class RNN(ChainnBasicModel):
         x = embed(word)
         h = e_to_h(x) + h_to_h(self._h)
         for i in range(3,len(self)-1):
-            h = self[i](h)
+            h = F.dropout(self[i](h), train=is_train)
         if update:
             self._h = h
         y = f(h_to_y(h))

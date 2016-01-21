@@ -2,10 +2,64 @@
 from collections import defaultdict
 from chainn.util import Vocabulary
 
+def strip_split(line):
+    return line.strip().split()
+
+def unsorted_batch(x_batch, SRC):
+    max_len = max(len(x) for x in x_batch)
+    for i in range(len(x_batch)):
+        x_batch[i] += [SRC.eos_id() for _ in range(max_len-len(x_batch[i]))]
+    return x_batch
+
+def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False):
+    rep_rare = lambda vocab, w, count, cut: vocab[w] if count is None or count[w] > cut else vocab.unk_id()
+    rep_unk  = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
+    convert_to_id = lambda vocab, w, count, cut: rep_unk(vocab, w) if replace_unknown else rep_rare(vocab, w, count, cut)
+
+    item_count = 0
+    ret = []
+    x_batch, y_batch = [], []
+    holder = []
+    for src, trg in data:
+        src = [convert_to_id(SRC, word, src_count, x_cut) for word in src]
+        trg = [convert_to_id(TRG, word, trg_count, y_cut) for word in trg]
+        holder.append((src, trg))
+
+    for src, trg in sorted(holder, key=lambda x: len(x[0])):
+        x_batch.append(src), y_batch.append(trg)
+        item_count += 1
+
+        if item_count % batch_size == 0:
+            ret.append((unsorted_batch(x_batch, SRC), unsorted_batch(y_batch, TRG)))
+            x_batch, y_batch = [], []
+    if len(x_batch) != 0:
+        ret.append((unsorted_batch(x_batch, SRC), unsorted_batch(y_batch, TRG)))
+    return ret
+
+def load_test_data(lines, SRC, batch_size=1, preprocessing=strip_split):
+    rep_rare = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
+    
+    item_count = 0
+    x_batch    = []
+    for src in lines:
+        src = [rep_rare(SRC, word) for word in preprocessing(src)]
+        x_batch.append(src)
+        item_count += 1
+
+        if item_count % batch_size == 0:
+            yield unsorted_batch(x_batch, SRC)
+            x_batch = []
+    
+    if len(x_batch) != 0:
+        yield unsorted_batch(x_batch, SRC)
+
+"""
+* POS TAGGER *
+"""
 def load_pos_train_data(lines, batch_size=1, cut_threshold=1):
-    x_ids, y_ids  = Vocabulary(), Vocabulary(unk=False)
-    holder        = defaultdict(lambda:[])
-    stat          = defaultdict(lambda: 0)
+    SRC, TRG = Vocabulary(unk=True, eos=True), Vocabulary(unk=False, eos=True)
+    data     = []
+    w_count  = defaultdict(lambda: 0)
 
     # Reading in the data
     for line in lines:
@@ -14,72 +68,64 @@ def load_pos_train_data(lines, batch_size=1, cut_threshold=1):
         for word in sent:
             word, tag = word.split("_")
             words.append(word)
-            labels.append(y_ids[tag])
-            stat[word] += 1
-        holder[len(words)].append((words,labels))
+            labels.append(tag)
+            w_count[word] += 1
+        data.append((words,labels))
 
-    # Convert to appropriate data structure
-    X, Y = [], []
-    for src_len, items in sorted(holder.items(), key=lambda x:x[0]):
-        item_count = 0
-        x_batch, y_batch = [], []
-        for words, labels in items:
-            words = list(map(lambda x: x_ids.unk_id() if stat[x] <= cut_threshold else x_ids[x], words))
-            x_batch.append(words)
-            y_batch.append(labels)
-            item_count += 1
+    # Data generator
+    data_generator = load_train_data(data, SRC, TRG, batch_size, src_count=w_count, x_cut=cut_threshold)
+    
+    # Return
+    return SRC, TRG, data_generator
 
-            if item_count % batch_size == 0:
-                X.append(x_batch)
-                Y.append(y_batch)
-                x_batch, y_batch = [], []
-        if len(x_batch) != 0:
-            X.append(x_batch)
-            Y.append(y_batch)
-    return X, Y, x_ids, y_ids
+def load_pos_test_data(lines, SRC, batch_size=1):
+    return load_test_data(lines, SRC, batch_size)
 
-def load_pos_test_data(lines, x_ids, batch_size=1):
-    holder        = defaultdict(lambda:[])
-    # Reading in the data
-    for sent_id, line in enumerate(lines):
-        sent          = line.strip().split()
-        words, labels = [], []
-        for word in sent:
-            if word in x_ids:
-                words.append(x_ids[word])
-            else:
-                words.append(x_ids.unk_id())
-        holder[len(words)].append((sent_id,words))
+"""
+* NMT *
+"""
+def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
+    src_count = defaultdict(lambda:0)
+    trg_count = defaultdict(lambda:0)
+    SRC  = Vocabulary(unk=True, eos=True)
+    TRG  = Vocabulary(unk=False, eos=True)
+    data = []
+    # Reading in data
+    for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
+        src_line = src_line.strip().lower().split() + [SRC.eos()]
+        trg_line = trg_line.strip().lower().split() + [TRG.eos()]
 
-    # Convert to appropriate data structure
-    X = []
-    sent_ids = []
-    for src_len, items in sorted(holder.items(), key=lambda x:x[0]):
-        item_count = 0
-        x_batch    = []
-        sent_batch = []
-        for sent_id, words in items:
-            x_batch.append(words)
-            sent_batch.append(sent_id)
-            item_count += 1
+        for word in src_line:
+            src_count[word] += 1
+        for word in trg_line:
+            trg_count[word] += 1
 
-            if item_count % batch_size == 0:
-                X.append(x_batch)
-                sent_ids.append(sent_batch)
-                x_batch, sent_batch = [], []
-        if len(x_batch) != 0:
-            X.append(x_batch)
-            sent_ids.append(sent_batch)
-    return X, sent_ids
+        data.append((src_line, trg_line))
+   
+    # Data generator
+    data_generator = load_train_data(data, SRC, TRG, batch_size, \
+            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=0)
+    
+    # Return
+    return SRC, TRG, data_generator
+    
+def load_nmt_test_data(src, SRC, batch_size=1):
+    def preprocessing(line):
+        return line.strip().split() + [SRC.eos()]
+    
+    return load_test_data(src, SRC, batch_size, preprocessing)
 
-def load_lm_data(lines, x_ids=None, batch_size=1, cut_threshold=1):
-    replace_unk = x_ids is not None
-    if x_ids is None:
-        x_ids = Vocabulary()
-        x_ids["<s>"], x_ids["</s>"]
+"""
+* LANGUAGE MODEL *
+"""
+def load_lm_data(lines, SRC=None, batch_size=1, cut_threshold=1):
+    replace_unk = SRC is not None
+    if SRC is None:
+        SRC = Vocabulary()
+        SRC["<s>"], SRC["</s>"]
 
     count  = defaultdict(lambda:0)
-    holder = defaultdict(lambda:[])
+    data   = []
     # Reading and counting the data
     for sent_id, line in enumerate(lines):
         sent = ["<s>"] + line.strip().lower().split() + ["</s>"]
@@ -89,171 +135,12 @@ def load_lm_data(lines, x_ids=None, batch_size=1, cut_threshold=1):
             if i < len(sent)-1:
                 words.append(sent[i])
                 next_w.append(sent[i+1])
-        holder[len(words)].append([sent_id, words, next_w])
+        data.append((words, next_w))
 
-    id_train = lambda x: x_ids[x] if count[x] > cut_threshold else x_ids.unk_id()
-    id_rep = lambda x: x_ids[x] if  x in x_ids else x_ids.unk_id()
-    convert_to_id = id_rep if replace_unk else id_train
-    # Convert to appropriate data structure
-    X, Y, ids = [], [], []
-    for src_len, items in sorted(holder.items(), key=lambda x:x[0]):
-        item_count = 0
-        x_batch, y_batch, id_batch = [], [], []
-        for sent_id, words, next_words in items:
-            word = list(map(convert_to_id, words))
-            nw   = list(map(convert_to_id, next_words))
-            x_batch.append(word)
-            y_batch.append(nw)
-            id_batch.append(sent_id)
-            item_count += 1
+    # Data generator
+    data_generator = load_train_data(data, SRC, SRC, batch_size, \
+            src_count=count, trg_count=count, x_cut=cut_threshold, y_cut=cut_threshold,\
+            replace_unknown=replace_unk)
 
-            if item_count % batch_size == 0:
-                X.append(x_batch)
-                Y.append(y_batch)
-                ids.append(id_batch)
-                x_batch, y_batch, id_batch = [], [], []
-        if len(x_batch) != 0:
-            X.append(x_batch)
-            Y.append(y_batch)
-            ids.append(id_batch)
-    return X, Y, x_ids, ids
+    return SRC, data_generator
 
-def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
-    data = defaultdict(lambda:[])
-    SRC  = Vocabulary(unk=True, eos=True)
-    TRG  = Vocabulary(unk=True, eos=True)
-
-    src_count = defaultdict(lambda:0)
-    trg_count = defaultdict(lambda:0)
-
-    # Reading in data
-    for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
-        src_line = src_line.strip().lower().split() + [SRC.eos()]
-        trg_line = trg_line.strip().lower().split() + [TRG.eos()]
-
-        for word in src_line:
-            src_count[word] += 1
-        for word in trg_line:
-            trg_count[word] += 1
-        
-        data[len(src_line), len(trg_line)].append((sent_id, src_line, trg_line))
-        
-    # Convert to id
-    rep_rare = lambda x, y, z: x[y] if z[y] > cut_threshold else x.unk_id()
-    x_data, y_data = [], []
-    for key_len, items in sorted(data.items(), key=lambda x: x[0]):
-        item_count = 0
-
-        x_batch, y_batch = [], []
-        for sent_id, src_line, trg_line in items:
-            src_line = [rep_rare(SRC, word, src_count) for word in src_line]
-            trg_line = [rep_rare(TRG, word, trg_count) for word in trg_line]
-            x_batch.append(src_line)
-            y_batch.append(trg_line)
-            item_count += 1
-            
-            if item_count % batch_size == 0:
-                x_data.append(x_batch)
-                y_data.append(y_batch)
-                x_batch, y_batch = [], []
-        if len(x_batch) != 0:
-            x_data.append(x_batch)
-            y_data.append(y_batch)
-    return x_data, y_data, SRC, TRG
-
-def load_nmt_test_data(src, SRC, batch_size=1):
-    data = defaultdict(lambda:[])
-
-    # Reading in data
-    for sent_id, src_line in enumerate(src):
-        src_line = src_line.strip().lower().split() + [SRC.eos()]
-
-        data[len(src_line)].append((sent_id, src_line))
-        
-    # Convert to id
-    rep_rare = lambda x, y: x[y] if y in x else x.unk_id()
-    x_data, ids = [], []
-    for key_len, items in sorted(data.items(), key=lambda x: x[0]):
-        item_count = 0
-
-        x_batch, id_batch = [], []
-        for sent_id, src_line in items:
-            src_line = [rep_rare(SRC, word) for word in src_line]
-            x_batch.append(src_line)
-            id_batch.append(sent_id)
-            item_count += 1
-            
-            if item_count % batch_size == 0:
-                x_data.append(x_batch)
-                ids.append(id_batch)
-                x_batch, id_batch = [], []
-        if len(x_batch) != 0:
-            x_data.append(x_batch)
-            ids.append(id_batch)
-    return x_data, ids
-
-def unsorted_batch(x_batch, SRC):
-    max_len = max(len(x) for x in x_batch)
-    for i in range(len(x_batch)):
-        x_batch[i] += [SRC.eos_id() for _ in range(max_len-len(x_batch[i]))]
-    return x_batch
-
-def load_nmt_train_unsorted_data(src, trg, batch_size=1, cut_threshold=1):
-    srcs, trgs = [], []
-    src_count = defaultdict(lambda:0)
-    trg_count = defaultdict(lambda:0)
-    SRC  = Vocabulary(unk=True, eos=True)
-    TRG  = Vocabulary(unk=True, eos=True)
-
-    # Reading in data
-    for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
-        src_line = src_line.strip().lower().split() + [SRC.eos()]
-        trg_line = trg_line.strip().lower().split() + [TRG.eos()]
-
-        for word in src_line:
-            src_count[word] += 1
-        for word in trg_line:
-            trg_count[word] += 1
-        srcs.append(src_line)
-        trgs.append(trg_line)
-     
-    rep_rare = lambda x, y, z: x[y] if z[y] > cut_threshold else x.unk_id()
-    x_batch, y_batch = [], []
-    x_data, y_data = [], []
-    item_count = 0
-    for sent_id, (src_line, trg_line) in enumerate(zip(srcs, trgs)):
-        src_line = [rep_rare(SRC, word, src_count) for word in src_line]
-        trg_line = [rep_rare(TRG, word, trg_count) for word in trg_line]
-        x_batch.append(src_line), y_batch.append(trg_line)
-        item_count += 1
-
-        if item_count % batch_size == 0:
-            x_data.append(unsorted_batch(x_batch, SRC))
-            y_data.append(unsorted_batch(y_batch, TRG))
-            x_batch, y_batch = [], []
-    if len(x_batch) != 0:
-        x_data.append(unsorted_batch(x_batch, SRC))
-        y_data.append(unsorted_batch(y_batch, TRG))
-    return x_data, y_data, SRC, TRG
-
-def load_nmt_test_unsorted_data(src, SRC, batch_size=1):
-    rep_rare = lambda x, y: x[y] if y in x else x.unk_id()
-    ret, ids = [], []
-    item_count = 0
-    x_batch, id_batch = [], []
-    for sent_id, src_line in enumerate(src):
-        src_line = src_line.strip().lower().split() + [SRC.eos()]
-        src_line = [rep_rare(SRC, word) for word in src_line]
-        x_batch.append(src_line)
-        id_batch.append(sent_id)
-        item_count += 1
-
-        if item_count % batch_size == 0:
-            ret.append(unsorted_batch(x_batch, SRC))
-            ids.append(id_batch)
-            x_batch, id_batch = [], []
-    
-    if len(x_batch) != 0:
-        ret.append(unsorted_batch(x_batch, SRC))
-        ids.append(id_batch)
-    return ret, ids

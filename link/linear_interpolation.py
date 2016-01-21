@@ -10,10 +10,6 @@ class LinearInterpolationFunction(chainer.function.Function):
 
     def forward(self, inputs):
         W, x, y = inputs
-        if isinstance(x, np.ndarray): # CPU
-            xp = np
-        else:
-            xp = cuda.cupy
         yp = W * x + (1-W) * y
         return yp,
 
@@ -21,20 +17,17 @@ class LinearInterpolationFunction(chainer.function.Function):
         xp = cuda.get_array_module(*inputs)
         W, x, y = inputs
         out = grad_outputs[0]
-        gw = cuda.to_cpu(out * (x - y))
+        gw = out * (x - y)
         gx = out * W
         gy = out * (1-W)
-        ret = 0
-
-        for row in gw:
-            ret += sum(row)
-        return xp.array([ret], dtype=np.float32), gx, gy
+        ret = gw.sum().sum() / (len(out) * len(out[0]))
+        return ret, gx, gy
 
 def linear_interpolation(W, x, y):
     return LinearInterpolationFunction()(W, x, y)
 
 class LinearInterpolation(chainer.Link):
-    def __init__(self, length, init=0.5):
+    def __init__(self, init=0.5):
         super(LinearInterpolation, self).__init__()
         self.add_param("W", 1)
         self.W.data[...] = init
