@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 
-import sys
-import argparse
-import gc
-import chainer
+import sys, argparse, math, gc, chainer
 import chainer.functions as F
 import chainn.util.functions as UF
-import chainn.util.generators as UG
 
 from collections import defaultdict
 from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile, AlignmentVisualizer
@@ -89,6 +85,7 @@ def main():
        
         UF.trace("Epoch Loss:", float(epoch_loss))
         UF.trace("Epoch Accuracy:", float(epoch_accuracy))
+        UF.trace("PPL:", math.exp(float(epoch_loss)))
 
         # saving model
         if (save_ctr + 1) % save_len == 0:

@@ -27,6 +27,7 @@ class EffectiveAttentional(ChainnBasicModel):
         self.EB = StackLSTM(E,H,depth)
         self.AE = L.Linear(2*H, 2*H)
         self.AH = L.Linear(2*H, 2*H)
+        self.AS = L.Linear(2*H, 2*H)
         self.WC = L.Linear(4*H, H)
         self.WS = L.Linear(H, O)
         self.OE = L.EmbedID(O, E)

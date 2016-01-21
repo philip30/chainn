@@ -26,15 +26,14 @@ class DictAttentional(EffectiveAttentional):
 
     def _construct_model(self, input, output, hidden, depth, embed):
         ret = super(DictAttentional, self)._construct_model(input, output, hidden, depth, embed)
-        self.WD = LinearInterpolation()
-        ret.append(self.WD)
+        self.DY = F.Linear(2 * output, output)
+        ret.append(self.DY)
         return ret
  
     def _load_dictionary(self, dict_dir):
         if type(dict_dir) is not str:
             return dict_dir
         dct = defaultdict(lambda:{})
-        mdc = defaultdict(lambda:0)
         with open(dict_dir) as fp:
             for line in fp:
                 line = line.strip().split()
@@ -42,9 +41,6 @@ class DictAttentional(EffectiveAttentional):
                 if src in self._src_voc and trg in self._trg_voc:
                     prob = float(line[2])
                     dct[src][trg] = prob
-                    #if prob > mdc[src]:
-                    #    mdc[src] = prob
-                    #    dct[src] = {trg:prob}
 
         return dict(dct)
 
@@ -69,10 +65,9 @@ class DictAttentional(EffectiveAttentional):
                 if src_word in dct:
                     for trg_word, prob in dct[src_word].items():
                         y_dict[i][TRG[trg_word]] += prob * alpha[j][i]
-        y_dict = F.log(eps + Variable(self._xp.array(y_dict, dtype=np.float32)))
+        y_dict = Variable(self._xp.array(y_dict, dtype=np.float32))
     
-        # Linear Interpolation
-        y = self.WD(y_dict, y)
+        y = self.DY(F.concat((y_dict, y), axis=1))
         return y
 
     @staticmethod
@@ -85,6 +80,6 @@ class DictAttentional(EffectiveAttentional):
         super(DictAttentional, self)._save_details(fp)
         fp.write_2leveldict(self._dict)
     
-    def report(self):
-        UF.trace("W:", str(self.WD.W.data))
+#    def report(self):
+#        UF.trace("W:", str(self.WD.W.data))
 

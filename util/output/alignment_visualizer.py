@@ -17,14 +17,20 @@ class AlignmentVisualizer:
         # Printing for every input
         for index, out in enumerate(data):
             print(index+start_index, file=fp)
-            str_data = [["" for _ in range(len(out)+1)] for _ in range(len(out[0])+1)]
+            
             src_data = src[index]
             trg_data = trg[index]
             eos = trg_voc.eos_id()
 
             if eos in trg_data:
                 trg_data = trg_data[:trg_data.index(eos)+1]
+           
+            print(len(trg_data))
+            print(len(src_data))
+            print(len(out))
+            print(len(out[0]))
 
+            str_data = [["" for _ in range(len(trg_data)+1)] for _ in range(len(src_data)+1)]
             # Header
             for i in range(len(src_data)):
                 str_data[i+1][0] = src_voc.tok_rpr(src_data[i])
@@ -33,8 +39,8 @@ class AlignmentVisualizer:
             
             # Filling
             format = "%." + str(precision) + "f"
-            for i in range(len(out)):
-                for j in range(len(out[i])):
+            for i in range(len(trg_data)):
+                for j in range(len(src_data)):
                     str_data[j+1][i+1] = format % (out[i][j])
 
             # Max_len
