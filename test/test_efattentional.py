@@ -32,7 +32,7 @@ class TestEfAttn(TestCase):
         model = self.model
         for src, trg in self.data:
             model.reset_state(src, trg)
-            for j in range(len(trg)):
+            for j in range(len(trg[0])):
                 trg_j = Variable(np.array([trg[i][j] for i in range(len(trg))], dtype=np.int32))
                 model(src, trg_j)
 

@@ -26,7 +26,7 @@ class DictAttentional(EffectiveAttentional):
 
     def _construct_model(self, input, output, hidden, depth, embed):
         ret = super(DictAttentional, self)._construct_model(input, output, hidden, depth, embed)
-        self.DY = F.Linear(2 * output, output)
+        self.DY = LinearInterpolation()
         ret.append(self.DY)
         return ret
  
@@ -49,26 +49,31 @@ class DictAttentional(EffectiveAttentional):
         TRG = self._trg_voc
         dct = self._dict
         f   = self._activation
-        # Copy value from a
-        alpha = []
-        for row in a:
-            alpha_row = []
-            for col in row.data:
-                alpha_row.append(float(col))
-            alpha.append(alpha_row)
+        xp  = self._xp
+        batch_size = len(y.data)
 
         # Calculating dict prob
-        y_dict = [[0 for _ in range(len(TRG))] for _ in range(len(src))]
-        for i, batch in enumerate(src):
-            for j, src_word in enumerate(batch):
-                src_word = SRC.tok_rpr(src_word)
+        y_dict = 0
+        for j in range(len(a)):
+            prob = [[0 for _ in range(len(TRG))] for _ in range(batch_size)]
+            for i in range(batch_size):
+                src_word = SRC.tok_rpr(src[i][j])
                 if src_word in dct:
-                    for trg_word, prob in dct[src_word].items():
-                        y_dict[i][TRG[trg_word]] += prob * alpha[j][i]
-        y_dict = Variable(self._xp.array(y_dict, dtype=np.float32))
-    
-        y = self.DY(F.concat((y_dict, y), axis=1))
-        return y
+                    for trg_word, p in dct[src_word].items():
+                        prob[i][TRG[trg_word]] += p
+            prob = Variable(xp.array(prob, dtype=np.float32))
+            mult = F.reshape(F.batch_matmul(prob, a[j]), (batch_size, self._output))
+            y_dict += mult
+        
+        #print(y.data)
+        #y = F.softmax(y)
+        #y_dict = F.softmax(y_dict)
+        #print(y_dict.data)
+        #print(y.data)
+        yp = y + F.log(eps + y_dict)
+        #print(yp.data)
+        #print("--------------------")
+        return yp
 
     @staticmethod
     def _load_details(fp, args, xp, SRC, TRG):
@@ -80,6 +85,6 @@ class DictAttentional(EffectiveAttentional):
         super(DictAttentional, self)._save_details(fp)
         fp.write_2leveldict(self._dict)
     
-#    def report(self):
-#        UF.trace("W:", str(self.WD.W.data))
+    def report(self):
+        UF.trace("W:", str(self.DY.W.data))
 
