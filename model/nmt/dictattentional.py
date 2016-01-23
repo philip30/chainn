@@ -24,12 +24,25 @@ class DictAttentional(EffectiveAttentional):
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._dict = self._load_dictionary(args.dict)
 
-    def _construct_model(self, input, output, hidden, depth, embed):
-        ret = super(DictAttentional, self)._construct_model(input, output, hidden, depth, embed)
-        self.DY = LinearInterpolation()
-        ret.append(self.DY)
-        return ret
- 
+    def reset_state(self, src, trg):
+        SRC = self._src_voc
+        TRG = self._trg_voc
+        dct = self._dict
+        xp  = self._xp
+        batch_size = len(src)
+
+        self.prob_dict = []
+        for j in range(len(src[0])):
+            prob = [[0 for _ in range(len(TRG))] for _ in range(batch_size)]
+            for i in range(batch_size):
+                src_word = SRC.tok_rpr(src[i][j])
+                if src_word in dct:
+                    for trg_word, p in dct[src_word].items():
+                        prob[i][TRG[trg_word]] += p
+            self.prob_dict.append(Variable(xp.array(prob, dtype=np.float32)))
+        
+        return super(DictAttentional, self).reset_state(src, trg) 
+
     def _load_dictionary(self, dict_dir):
         if type(dict_dir) is not str:
             return dict_dir
@@ -45,34 +58,14 @@ class DictAttentional(EffectiveAttentional):
         return dict(dct)
 
     def _additional_score(self, y, a, src):
-        SRC = self._src_voc
-        TRG = self._trg_voc
-        dct = self._dict
-        f   = self._activation
-        xp  = self._xp
         batch_size = len(y.data)
-
+        vocab_size = self._output
         # Calculating dict prob
         y_dict = 0
         for j in range(len(a)):
-            prob = [[0 for _ in range(len(TRG))] for _ in range(batch_size)]
-            for i in range(batch_size):
-                src_word = SRC.tok_rpr(src[i][j])
-                if src_word in dct:
-                    for trg_word, p in dct[src_word].items():
-                        prob[i][TRG[trg_word]] += p
-            prob = Variable(xp.array(prob, dtype=np.float32))
-            mult = F.reshape(F.batch_matmul(prob, a[j]), (batch_size, self._output))
-            y_dict += mult
+            y_dict += F.reshape(F.batch_matmul(self.prob_dict[j], a[j]), (batch_size, vocab_size))
         
-        #print(y.data)
-        #y = F.softmax(y)
-        #y_dict = F.softmax(y_dict)
-        #print(y_dict.data)
-        #print(y.data)
         yp = y + F.log(eps + y_dict)
-        #print(yp.data)
-        #print("--------------------")
         return yp
 
     @staticmethod
@@ -85,6 +78,3 @@ class DictAttentional(EffectiveAttentional):
         super(DictAttentional, self)._save_details(fp)
         fp.write_2leveldict(self._dict)
     
-    def report(self):
-        UF.trace("W:", str(self.DY.W.data))
-
