@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument("--gen", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
+    parser.add_argument("--gpu", type=int, default=0)
     return parser.parse_args()
 
 def main():
@@ -25,7 +26,7 @@ def main():
     
     # Setup model
     UF.trace("Setting up classifier")
-    model = ParallelTextClassifier(args, use_gpu=not args.use_cpu, collect_output=True)
+    model = ParallelTextClassifier(args, use_gpu=args.gpu, collect_output=True)
     X, Y  = model.get_vocabularies()
 
     # data
@@ -68,6 +69,8 @@ def main():
 def check_args(args):
     if args.operation == "sppl" and args.batch != 1:
         raise ValueError("Currently sentence based perplexity not supports multi batching.")
+    if args.use_cpu:
+        args.gpu = -1
     return args
 
 if __name__ == "__main__":

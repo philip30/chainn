@@ -9,27 +9,33 @@ from chainn.link import Classifier
 from chainn.util import ModelFile
 
 class ChainnClassifier(object):
-    def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=False, collect_output=False, activation=F.tanh):
+    def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=-1, collect_output=False, activation=F.tanh):
         self._opt            = optimizer
         if not hasattr(cuda, "cupy"):
-            use_gpu  = False
+            use_gpu  = -1
             self._xp = np
         else:
-            self._xp = cuda.cupy if use_gpu else np
+            if use_gpu >= 0:
+                self._xp = cuda.cupy
+                cuda.get_device(use_gpu).use()
+            else:
+                self._xp = np
         
         self._model          = self._load_classifier()(self._load_model(args, X, Y, activation))
         self._collect_output = collect_output
         self._src_voc        = X if not args.init_model else self._model.predictor._src_voc
         self._trg_voc        = Y if not args.init_model else self._model.predictor._trg_voc
-       
-        if use_gpu: self._model = self._model.to_gpu()
+        self._gpu_id         = use_gpu
+
+        if use_gpu >= 0:
+            self._model = self._model.to_gpu(use_gpu)
         # Setup Optimizer
         if optimizer is not None:
             self._opt.setup(self._model)
     
     def save(self, fp):
         fp.write_optimizer_state(self._opt)
-        self._model.predictor.save(fp)
+        self._model.predictor.save(fp, self._gpu_id)
 
     def train(self, x_data, y_data, update=True, *args, **kwargs):
         self._model.zerograds()

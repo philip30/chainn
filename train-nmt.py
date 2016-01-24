@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument("--save_len", type=positive_decimal, default=1)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
+    parser.add_argument("--gpu", type=int, default=0)
     parser.add_argument("--init_model", type=str)
     parser.add_argument("--model",type=str,choices=["encdec","attn","efattn","dictattn"], default="efattn")
     parser.add_argument("--debug",action="store_true")
@@ -48,7 +49,7 @@ def main():
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
-    model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=args.verbose)
+    model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
 
     # Begin Training
     UF.trace("Begin training NMT")
@@ -122,6 +123,9 @@ def check_args(args):
     if args.model == "attn":
         if args.depth > 1:
             raise ValueError("Currently depth is not supported for both of these models")
+    
+    if args.use_cpu:
+        args.gpu = -1
 
     return args
 

@@ -27,10 +27,17 @@ def parse_args():
     parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
     parser.add_argument("--dev", type=str)
     parser.add_argument("--use_cpu", action="store_true")
+    parser.add_argument("--gpu", type=int, default=0)
     return parser.parse_args()
+
+def check_args(args):
+    if args.use_cpu:
+        args.gpu = -1
+    return args
 
 def main():
     args = parse_args()
+    args = check_args(args)
     
     # Variable
     epoch_total = args.epoch
@@ -45,7 +52,7 @@ def main():
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
-    model = ParallelTextClassifier(args, X, X, opt, not args.use_cpu, activation=F.relu)
+    model = ParallelTextClassifier(args, X, X, opt, args.gpu, activation=F.relu)
     
     # Hooking
     opt.add_hook(chainer.optimizer.GradientClipping(10))
