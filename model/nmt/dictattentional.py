@@ -12,12 +12,12 @@ from chainer import Variable, cuda
 from chainn import functions as UF
 from chainn.link import LSTM, LinearInterpolation
 from chainn.model.basic import ChainnBasicModel
-from chainn.model.nmt import EffectiveAttentional
+from chainn.model.nmt import Attentional
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 
 eps = 0.001
-class DictAttentional(EffectiveAttentional):
+class DictAttentional(Attentional):
     name = "dictattn" 
 
     def __init__(self, src_voc, trg_voc, args, *other, **kwargs):

@@ -16,8 +16,8 @@ from chainn.util import DecodingOutput
 # (Luong et al., 2015)
 # http://arxiv.org/pdf/1508.04025v5.pdf
 
-class EffectiveAttentional(ChainnBasicModel):
-    name = "efattn" 
+class Attentional(ChainnBasicModel):
+    name = "attn" 
     
     def _construct_model(self, input, output, hidden, depth, embed):
         I, O, E, H = input, output, embed, hidden

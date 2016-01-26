@@ -96,9 +96,6 @@ class TestNMT(TestCase):
     def test_NMT_attn(self):
         self.run("attn", "")
 
-    def test_NMT_efattn(self):
-        self.run("efattn","")
-
     def test_NMT_dictattn(self):
         self.run("dictattn", "--dict test/data/dict.txt")
         
