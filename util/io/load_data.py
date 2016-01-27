@@ -2,6 +2,8 @@
 from collections import defaultdict
 from chainn.util import Vocabulary
 
+import chainn.util.functions as UF
+
 def strip_split(line):
     return line.strip().split()
 
@@ -34,6 +36,8 @@ def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None
             x_batch, y_batch = [], []
     if len(x_batch) != 0:
         ret.append((unsorted_batch(x_batch, SRC), unsorted_batch(y_batch, TRG)))
+    UF.trace("SRC size:", len(SRC))
+    UF.trace("TRG size:", len(TRG))
     return ret
 
 def load_test_data(lines, SRC, batch_size=1, preprocessing=strip_split):

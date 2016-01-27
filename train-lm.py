@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
     parser.add_argument("--dev", type=str)
     parser.add_argument("--use_cpu", action="store_true")
-    parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--gpu", type=int, default=-1)
     return parser.parse_args()
 
 def check_args(args):

@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--lr", type=float, default=0.1)
     parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--gpu", type=int, default=-1)
     return parser.parse_args()
 
 def check_args(args):

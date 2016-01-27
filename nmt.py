@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument("--src", type=str)
     parser.add_argument("--gen_limit", type=int, default=50)
     parser.add_argument("--use_cpu", action="store_true")
-    parser.add_argument("--gpu", type=int, default=0, help="Which GPU to use (Negative for cpu)")
+    parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu)")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--alignment_out", type=str)
     return parser.parse_args()

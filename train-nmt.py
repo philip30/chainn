@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument("--save_len", type=positive_decimal, default=1)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
-    parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--gpu", type=int, default=-1)
     parser.add_argument("--init_model", type=str)
     parser.add_argument("--model",type=str,choices=["encdec","attn","efattn","dictattn"], default="efattn")
     parser.add_argument("--debug",action="store_true")
@@ -71,7 +71,7 @@ def main():
             if args.verbose:
                 report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
-            UF.trace("Trained %d: %f" % (trained, accum_loss))
+            UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])))
             model.report()
         epoch_loss /= len(data)
         epoch_accuracy /= len(data)

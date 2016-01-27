@@ -62,7 +62,7 @@ class TestNMT(TestCase):
         self.assertEqual(data, data_exp)
     
     def test_NMT_2_read_write(self):
-        for model in ["efattn", "encdec", "attn"]:
+        for model in ["encdec", "attn"]:
             src_voc = Vocabulary()
             trg_voc = Vocabulary()
             for tok in "</s> I am Philip".split():
