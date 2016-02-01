@@ -2,6 +2,7 @@ import numpy as np
 import sys, math
 from collections import defaultdict
 
+from chainn.util import functions as UF
 import chainer.functions as F
 import chainer.links as L
 
@@ -29,18 +30,21 @@ class DictAttentional(Attentional):
         TRG = self._trg_voc
         dct = self._dict
         xp  = self._xp
+        vocab_size = self._output
         batch_size = len(src)
+        src_len = len(src[0])
 
-        self.prob_dict = []
-        for j in range(len(src[0])):
-            prob = [[0 for _ in range(len(TRG))] for _ in range(batch_size)]
+        prob_dict = []
+        for j in range(src_len):
+            prob = [[0 for _ in range(vocab_size)] for _ in range(batch_size)]
             for i in range(batch_size):
                 src_word = SRC.tok_rpr(src[i][j])
                 if src_word in dct:
                     for trg_word, p in dct[src_word].items():
                         prob[i][TRG[trg_word]] += p
-            self.prob_dict.append(xp.array(prob, dtype=np.float32))
-        
+            prob_dict.append(prob)
+        self.prob_dict = F.swapaxes(Variable(xp.array(prob_dict, dtype=np.float32)), 0, 1)
+
         return super(DictAttentional, self).reset_state(src, trg) 
 
     def _load_dictionary(self, dict_dir):
@@ -60,12 +64,12 @@ class DictAttentional(Attentional):
     def _additional_score(self, y, a, src):
         batch_size = len(y.data)
         vocab_size = self._output
+        xp         = self._xp
+        src_len    = len(self.prob_dict)
         # Calculating dict prob
-        y_dict = 0
-        for j in range(len(a)):
-            y_dict += self.prob_dict[j] * a[j].data
-        y_dict = Variable(y_dict)
-
+        y_dict = F.reshape(F.batch_matmul(a, self.prob_dict, transa=True), (batch_size, vocab_size))
+        
+        # Using dict prob
         yp = y + F.log(eps + y_dict)
         return yp
 

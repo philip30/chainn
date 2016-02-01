@@ -71,7 +71,7 @@ def main():
             if args.verbose:
                 report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
-            UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])))
+            UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])-1)) # minus the </s>
             model.report()
         epoch_loss /= len(data)
         epoch_accuracy /= len(data)

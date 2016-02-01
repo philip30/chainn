@@ -79,6 +79,7 @@ class Attentional(ChainnBasicModel):
         return S
      
     def __call__ (self, x_data, train_ref=None, update=True, debug=False):
+        xp = self._xp
         src_len = len(x_data[0])
         batch_size = len(x_data)
         hidden_size = self._hidden
