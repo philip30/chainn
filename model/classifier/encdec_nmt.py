@@ -12,6 +12,9 @@ from chainn.model.nmt import EncoderDecoder, Attentional, DictAttentional
 from chainn.util import ModelFile, DecodingOutput
 from chainn.link import NMTClassifier
 
+# Length of truncated BPTT
+BP_LEN = 50
+
 class EncDecNMT(ChainnClassifier):
 
     def __init__(self, *args, **kwargs):
@@ -35,7 +38,8 @@ class EncDecNMT(ChainnClassifier):
         output    = [[] for _ in range(batch_size)]
         alignment = [[[] for _ in range(gen_limit)] for _ in range(batch_size)]
         accum_loss, accum_acc = 0, 0 
-    
+        bp_ctr = 0
+
         # Decoding
         for j in range(gen_limit):
             if is_train:
@@ -62,6 +66,13 @@ class EncDecNMT(ChainnClassifier):
                     alignment = None
             if not is_train and all(output[i][j] == EOL for i in range(len(output))):
                 break
+
+            if is_train:
+                bp_ctr += 1
+                if bp_ctr % BP_LEN == 0:
+                    bp_ctr = 0
+                    accum_loss.backward()
+                    accum_loss.unchain_backward()
         
 
         output = DecodingOutput(output, alignment)

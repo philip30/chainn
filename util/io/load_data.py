@@ -2,7 +2,7 @@
 from collections import defaultdict
 from chainn.util import Vocabulary
 
-import chainn.util.functions as UF
+from chainn.util import functions as UF
 
 def strip_split(line):
     return line.strip().split()
@@ -92,7 +92,7 @@ def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
     src_count = defaultdict(lambda:0)
     trg_count = defaultdict(lambda:0)
     SRC  = Vocabulary(unk=True, eos=True)
-    TRG  = Vocabulary(unk=False, eos=True)
+    TRG  = Vocabulary(unk=True, eos=True)
     data = []
     # Reading in data
     for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
@@ -108,7 +108,7 @@ def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
    
     # Data generator
     data_generator = load_train_data(data, SRC, TRG, batch_size, \
-            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=0)
+            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=cut_threshold)
     
     # Return
     return SRC, TRG, data_generator

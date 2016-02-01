@@ -39,7 +39,7 @@ class DictAttentional(Attentional):
                 if src_word in dct:
                     for trg_word, p in dct[src_word].items():
                         prob[i][TRG[trg_word]] += p
-            self.prob_dict.append(Variable(xp.array(prob, dtype=np.float32)))
+            self.prob_dict.append(xp.array(prob, dtype=np.float32))
         
         return super(DictAttentional, self).reset_state(src, trg) 
 
@@ -63,8 +63,9 @@ class DictAttentional(Attentional):
         # Calculating dict prob
         y_dict = 0
         for j in range(len(a)):
-            y_dict += F.reshape(F.batch_matmul(self.prob_dict[j], a[j]), (batch_size, vocab_size))
-        
+            y_dict += self.prob_dict[j] * a[j].data
+        y_dict = Variable(y_dict)
+
         yp = y + F.log(eps + y_dict)
         return yp
 
