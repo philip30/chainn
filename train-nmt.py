@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument("--init_model", type=str)
     parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn")
     parser.add_argument("--debug",action="store_true")
+    parser.add_argument("--unk_cut", type=int, default=1)
     # DictAttn
     parser.add_argument("--dict",type=str)
     return parser.parse_args()
@@ -43,7 +44,7 @@ def main():
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
-            cut = 1 if not args.debug else 0
+            cut = args.unk_cut if not args.debug else 0
             SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
 
     # Setup model
