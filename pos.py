@@ -15,14 +15,20 @@ def parse_args():
     parser.add_argument("--init_model", required=True, type=str, help="Initiate the model from previous")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
+    parser.add_argument("--gpu", type=int, default=-1)
     return parser.parse_args()
 
+def check_args(args):
+    if args.use_cpu:
+        args.gpu = -1
+    return args
+
 def main():
-    args = parse_args()
+    args = check_args(parse_args())
     
     # Setup model
     UF.trace("Setting up classifier")
-    model = ParallelTextClassifier(args, use_gpu=not args.use_cpu)
+    model = ParallelTextClassifier(args, use_gpu=args.gpu)
     X, Y  = model.get_vocabularies()
 
     # data

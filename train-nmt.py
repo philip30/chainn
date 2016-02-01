@@ -27,9 +27,11 @@ def parse_args():
     parser.add_argument("--save_len", type=positive_decimal, default=1)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_cpu", action="store_true")
+    parser.add_argument("--gpu", type=int, default=-1)
     parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",type=str,choices=["encdec","attn","efattn","dictattn"], default="efattn")
+    parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn")
     parser.add_argument("--debug",action="store_true")
+    parser.add_argument("--unk_cut", type=int, default=1)
     # DictAttn
     parser.add_argument("--dict",type=str)
     return parser.parse_args()
@@ -42,13 +44,13 @@ def main():
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
-            cut = 1 if not args.debug else 0
+            cut = args.unk_cut if not args.debug else 0
             SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
 
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
-    model = EncDecNMT(args, SRC, TRG, opt, not args.use_cpu, collect_output=args.verbose)
+    model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
 
     # Begin Training
     UF.trace("Begin training NMT")
@@ -70,7 +72,7 @@ def main():
             if args.verbose:
                 report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
             trained += len(src)
-            UF.trace("Trained %d: %f" % (trained, accum_loss))
+            UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])-1)) # minus the </s>
             model.report()
         epoch_loss /= len(data)
         epoch_accuracy /= len(data)
@@ -119,9 +121,12 @@ def check_args(args):
     else:
         if args.dict:
             raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
-    if args.model == "attn" or args.model == "encdec":
+    if args.model == "attn":
         if args.depth > 1:
             raise ValueError("Currently depth is not supported for both of these models")
+    
+    if args.use_cpu:
+        args.gpu = -1
 
     return args
 

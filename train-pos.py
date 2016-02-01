@@ -26,7 +26,13 @@ def parse_args():
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--lr", type=float, default=0.1)
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--gpu", type=int, default=-1)
     return parser.parse_args()
+
+def check_args(args):
+    if args.use_cpu:
+        args.gpu = -1
+    return args
 
 def main():
     args = parse_args()
@@ -41,7 +47,7 @@ def main():
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
-    model = ParallelTextClassifier(args, X, Y, opt, not args.use_cpu, activation=F.relu)
+    model = ParallelTextClassifier(args, X, Y, opt, args.gpu, activation=F.relu)
     
     # Hooking
     opt.add_hook(chainer.optimizer.GradientClipping(10))

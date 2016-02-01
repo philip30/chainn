@@ -17,18 +17,24 @@ def parse_args():
     parser.add_argument("--src", type=str)
     parser.add_argument("--gen_limit", type=int, default=50)
     parser.add_argument("--use_cpu", action="store_true")
+    parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu)")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--alignment_out", type=str)
     return parser.parse_args()
 
+def check_args(args):
+    if args.use_cpu:
+        args.gpu = -1
+    return args
+
 def main():
     # Preparations
-    args  = parse_args()
+    args  = check_args(parse_args())
     ao_fp = UF.load_stream(args.alignment_out)
 
     # Loading model
     UF.trace("Setting up classifier")
-    model = EncDecNMT(args, use_gpu=not args.use_cpu, collect_output=True)
+    model = EncDecNMT(args, use_gpu=args.gpu, collect_output=True)
     SRC, TRG  = model.get_vocabularies()
 
     # Decoding

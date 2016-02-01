@@ -19,7 +19,10 @@ class ChainnBasicModel(ChainList):
         self._activation = activation
         self._xp      = xp
 
-    def save(self, fp):
+    def save(self, fp, gpu_id=-1):
+        if gpu_id > 0:
+            self.to_cpu()
+
         fp.write(self.__class__.name)
         fp.write("Inp:\t"+str(self._input))
         fp.write("Out:\t"+str(self._output))
@@ -31,6 +34,9 @@ class ChainnBasicModel(ChainList):
         self._trg_voc.save(fp)
         self._save_details(fp)
         fp.write_param_list(self)
+
+        if gpu_id > 0:
+            self.to_gpu(gpu_id)
   
     @staticmethod
     def load(fp, Model, args, xp):

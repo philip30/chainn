@@ -1,4 +1,5 @@
 import numpy as np
+import chainer.links as L
 import chainer.functions as F
 
 # Chainer
@@ -8,6 +9,7 @@ from chainer import Variable
 from chainn import functions as UF
 from chainn.model.basic import ChainnBasicModel
 from chainn.util import DecodingOutput
+from chainn.link import StackLSTM
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 # This program is an implementation of Sequence to Sequence Learning with Neural Networks
@@ -20,59 +22,59 @@ class EncoderDecoder(ChainnBasicModel):
     def _construct_model(self, input, output, hidden, depth, embed):
         assert(depth >= 1)
         I, O, E, H = input, output, embed, hidden
+        
+        self.IE = L.EmbedID(I,E)
+        self.EF = StackLSTM(E,H,depth)
+        self.WS = L.Linear(H, O)
+        self.OE = L.EmbedID(O, E)
+        self.HH = L.Linear(H, H)
+
         ret = []
         # Encoder
-        ret.append(F.EmbedID(I, E))      # w_xi 0
-        ret.append(F.Linear(E, 4*H))     # w_ip 1
-        ret.append(F.Linear(H, 4*H))     # w_pp 2
-        # Decoder
-        ret.append(F.Linear(H, 4*H))     # w_pq 3
-        ret.append(F.Linear(H, E))       # w_qj 4
-        ret.append(F.Linear(E, O))       # w_jy 5
-        ret.append(F.EmbedID(O, 4*H))    # w_yq 6 
-        ret.append(F.Linear(H, 4*H))     # w_qq 7
+        ret.append(self.IE)
+        ret.append(self.EF)
+        ret.append(self.WS)
+        ret.append(self.OE)
+        ret.append(self.HH)
+
         return ret
     
     # Encoding all the source sentence
     def reset_state(self, x_data, y_data):
         # Unpacking
-        xp, hidden  = self._xp, self._hidden
-        row_len     = len(x_data)
-        col_len     = len(x_data[0])
-        f           = self._activation
-        
-        # Model Weight
-        XI, IP, PP, PQ = self[0:4]
+        batch_size = len(x_data)
+        src_len    = len(x_data[0])
+        xp = self._xp
+        f  = self._activation
+        is_train = y_data is not None
+        self.EF.reset_state()
 
-        # Encoding (Reading up source sentence)
-        s_c = Variable(xp.zeros((row_len, hidden), dtype=np.float32)) # cell state
-        s_p = Variable(xp.zeros((row_len, hidden), dtype=np.float32)) # outgoing signal
-        for j in reversed(range(col_len)):
-            s_x      = Variable(xp.array([x_data[i][j] for i in range(row_len)], dtype=np.int32))
-            s_i      = f(XI(s_x))
-            s_c, s_p = F.lstm(s_c, IP(s_i) + PP(s_p))
-        self._h = F.lstm(s_c, PQ(s_p))
-        return self._h
+        for j in range(src_len):
+            s_x   = Variable(xp.array([x_data[i][-j-1] for i in range(batch_size)], dtype=np.int32))
+            s_i   = self.IE(s_x)
+            h     = self.EF(s_i, is_train)
+        self.h = h
+
+        return self.HH(h)
 
     # Decode one word
     def __call__ (self, x_data, train_ref=None, update=True):
         # Unpacking
         xp = self._xp
         f  = self._activation
-        QJ, JY, YQ, QQ = self[4:8]
-        
+        is_train = train_ref is not None
+
         # Decoding
-        s_c, s_q = self._h
-        s_j      = f(QJ(s_q))
-        y        = JY(s_j)
+        y = self.WS(self.h)
         
         if update:
             if train_ref is not None:
-                upd = Variable(xp.array(train_ref.data, dtype=np.int32))
+                wt = Variable(xp.array(train_ref.data, dtype=np.int32))
             else:
-                upd = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
-    
+                wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
+            w_n = self.OE(wt)
+            
             # Updating
-            self._h  = F.lstm(s_c, YQ(upd) + QQ(s_q))
+            self.h  = self.HH(self.EF(w_n, is_train))
         return DecodingOutput(y)
     

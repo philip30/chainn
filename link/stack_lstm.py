@@ -1,5 +1,6 @@
 import chainer.links as L
 import chainer.functions as F
+import copy
 from chainer import Variable, ChainList
 from chainn.link import LSTM
 
@@ -22,3 +23,8 @@ class StackLSTM(ChainList):
     def reset_state(self):
         for lstm in self:
             lstm.reset_state()
+
+    def copy_state(self, other):
+        for lstm_1, lstm_2 in zip(self, other):
+            lstm_1.c = copy.copy(lstm_2.c)
+

@@ -8,14 +8,17 @@ import chainer.functions as F
 # Chainn
 import chainn.util.functions as UF
 from chainn.model import ChainnClassifier
-from chainn.model.nmt import EncoderDecoder, Attentional, EffectiveAttentional, DictAttentional
+from chainn.model.nmt import EncoderDecoder, Attentional, DictAttentional
 from chainn.util import ModelFile, DecodingOutput
 from chainn.link import NMTClassifier
+
+# Length of truncated BPTT
+BP_LEN = 50
 
 class EncDecNMT(ChainnClassifier):
 
     def __init__(self, *args, **kwargs):
-        self._all_models = [EncoderDecoder, Attentional, EffectiveAttentional, DictAttentional]
+        self._all_models = [EncoderDecoder, Attentional, DictAttentional]
         super(EncDecNMT, self).__init__(*args, **kwargs)
         
     def __call__(self, x_data, y_data=None, gen_limit=50):
@@ -35,7 +38,8 @@ class EncDecNMT(ChainnClassifier):
         output    = [[] for _ in range(batch_size)]
         alignment = [[[] for _ in range(gen_limit)] for _ in range(batch_size)]
         accum_loss, accum_acc = 0, 0 
-    
+        bp_ctr = 0
+
         # Decoding
         for j in range(gen_limit):
             if is_train:
@@ -53,15 +57,23 @@ class EncDecNMT(ChainnClassifier):
                     output[i].append(y[i])
                 
                 a = out.a
+
                 if a is not None:
-                    for x in a:
-                        for i, x_a in enumerate(x.data):
+                    for i, x in enumerate(a.data):
+                        for x_a in x:
                             alignment[i][j].append(float(x_a))
                         # Break if all sentences end with EOL
                 else:
                     alignment = None
             if not is_train and all(output[i][j] == EOL for i in range(len(output))):
                 break
+
+            if is_train:
+                bp_ctr += 1
+                if bp_ctr % BP_LEN == 0:
+                    bp_ctr = 0
+                    accum_loss.backward()
+                    accum_loss.unchain_backward()
         
 
         output = DecodingOutput(output, alignment)

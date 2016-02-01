@@ -2,6 +2,7 @@ import numpy as np
 import sys, math
 from collections import defaultdict
 
+from chainn.util import functions as UF
 import chainer.functions as F
 import chainer.links as L
 
@@ -12,24 +13,40 @@ from chainer import Variable, cuda
 from chainn import functions as UF
 from chainn.link import LSTM, LinearInterpolation
 from chainn.model.basic import ChainnBasicModel
-from chainn.model.nmt import EffectiveAttentional
+from chainn.model.nmt import Attentional
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 
 eps = 0.001
-class DictAttentional(EffectiveAttentional):
+class DictAttentional(Attentional):
     name = "dictattn" 
 
     def __init__(self, src_voc, trg_voc, args, *other, **kwargs):
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._dict = self._load_dictionary(args.dict)
 
-    def _construct_model(self, input, output, hidden, depth, embed):
-        ret = super(DictAttentional, self)._construct_model(input, output, hidden, depth, embed)
-        self.DY = F.Linear(2 * output, output)
-        ret.append(self.DY)
-        return ret
- 
+    def reset_state(self, src, trg):
+        SRC = self._src_voc
+        TRG = self._trg_voc
+        dct = self._dict
+        xp  = self._xp
+        vocab_size = self._output
+        batch_size = len(src)
+        src_len = len(src[0])
+
+        prob_dict = []
+        for j in range(src_len):
+            prob = [[0 for _ in range(vocab_size)] for _ in range(batch_size)]
+            for i in range(batch_size):
+                src_word = SRC.tok_rpr(src[i][j])
+                if src_word in dct:
+                    for trg_word, p in dct[src_word].items():
+                        prob[i][TRG[trg_word]] += p
+            prob_dict.append(prob)
+        self.prob_dict = F.swapaxes(Variable(xp.array(prob_dict, dtype=np.float32)), 0, 1)
+
+        return super(DictAttentional, self).reset_state(src, trg) 
+
     def _load_dictionary(self, dict_dir):
         if type(dict_dir) is not str:
             return dict_dir
@@ -45,30 +62,16 @@ class DictAttentional(EffectiveAttentional):
         return dict(dct)
 
     def _additional_score(self, y, a, src):
-        SRC = self._src_voc
-        TRG = self._trg_voc
-        dct = self._dict
-        f   = self._activation
-        # Copy value from a
-        alpha = []
-        for row in a:
-            alpha_row = []
-            for col in row.data:
-                alpha_row.append(float(col))
-            alpha.append(alpha_row)
-
+        batch_size = len(y.data)
+        vocab_size = self._output
+        xp         = self._xp
+        src_len    = len(self.prob_dict)
         # Calculating dict prob
-        y_dict = [[0 for _ in range(len(TRG))] for _ in range(len(src))]
-        for i, batch in enumerate(src):
-            for j, src_word in enumerate(batch):
-                src_word = SRC.tok_rpr(src_word)
-                if src_word in dct:
-                    for trg_word, prob in dct[src_word].items():
-                        y_dict[i][TRG[trg_word]] += prob * alpha[j][i]
-        y_dict = Variable(self._xp.array(y_dict, dtype=np.float32))
-    
-        y = self.DY(F.concat((y_dict, y), axis=1))
-        return y
+        y_dict = F.reshape(F.batch_matmul(a, self.prob_dict, transa=True), (batch_size, vocab_size))
+        
+        # Using dict prob
+        yp = y + F.log(eps + y_dict)
+        return yp
 
     @staticmethod
     def _load_details(fp, args, xp, SRC, TRG):
@@ -80,6 +83,3 @@ class DictAttentional(EffectiveAttentional):
         super(DictAttentional, self)._save_details(fp)
         fp.write_2leveldict(self._dict)
     
-#    def report(self):
-#        UF.trace("W:", str(self.WD.W.data))
-

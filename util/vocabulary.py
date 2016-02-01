@@ -25,6 +25,9 @@ class Vocabulary(object):
         self._data[index] = data_i
         self._back[data_i] = index
 
+    def __contains__(self, key):
+        return key in self._data
+
     def __iter__(self):
         return iter(self._data)
 

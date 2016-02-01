@@ -39,12 +39,12 @@ class TestNMT(TestCase):
         trg=["私 は フィリップ です", "私 は 学生 です"]
         SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=1)
         x_exp = Vocabulary(unk=True, eos=True)
-        y_exp = Vocabulary(unk=False, eos=True)
+        y_exp = Vocabulary(unk=True, eos=True)
         
         for w in "i am".split():
             x_exp[w]
 
-        for w in "私 は フィリップ です 学生".split():
+        for w in "私 は です".split():
             y_exp[w]
         x_data_exp = [\
                 [[x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp.eos_id()]], \
@@ -52,8 +52,8 @@ class TestNMT(TestCase):
         ]
 
         y_data_exp = [\
-                [[y_exp["私" ], y_exp["は" ], y_exp["フィリップ"], y_exp["です"], y_exp.eos_id()]], \
-                [[y_exp["私" ], y_exp["は" ], y_exp["学生"], y_exp["です"], y_exp.eos_id()]] \
+                [[y_exp["私" ], y_exp["は" ], y_exp.unk_id(), y_exp["です"], y_exp.eos_id()]], \
+                [[y_exp["私" ], y_exp["は" ], y_exp.unk_id(), y_exp["です"], y_exp.eos_id()]] \
         ]
 
         data_exp = list(zip(x_data_exp, y_data_exp))
@@ -62,7 +62,7 @@ class TestNMT(TestCase):
         self.assertEqual(data, data_exp)
     
     def test_NMT_2_read_write(self):
-        for model in ["efattn", "encdec", "attn"]:
+        for model in ["encdec", "attn"]:
             src_voc = Vocabulary()
             trg_voc = Vocabulary()
             for tok in "</s> I am Philip".split():
@@ -95,9 +95,6 @@ class TestNMT(TestCase):
 
     def test_NMT_attn(self):
         self.run("attn", "")
-
-    def test_NMT_efattn(self):
-        self.run("efattn","")
 
     def test_NMT_dictattn(self):
         self.run("dictattn", "--dict test/data/dict.txt")
