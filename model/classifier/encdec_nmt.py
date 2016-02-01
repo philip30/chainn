@@ -57,9 +57,10 @@ class EncDecNMT(ChainnClassifier):
                     output[i].append(y[i])
                 
                 a = out.a
+
                 if a is not None:
-                    for x in a:
-                        for i, x_a in enumerate(x.data):
+                    for i, x in enumerate(a.data):
+                        for x_a in x:
                             alignment[i][j].append(float(x_a))
                         # Break if all sentences end with EOL
                 else:

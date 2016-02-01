@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument("--use_cpu", action="store_true")
     parser.add_argument("--gpu", type=int, default=-1)
     parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",type=str,choices=["encdec","attn","efattn","dictattn"], default="efattn")
+    parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn")
     parser.add_argument("--debug",action="store_true")
     # DictAttn
     parser.add_argument("--dict",type=str)
