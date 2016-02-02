@@ -52,7 +52,7 @@ def main():
                     print(TRG.str_rpr(trg_i))
                 
                 if ao_fp is not None:
-                    AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, ao_fp)
+                    AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=ao_fp)
 
                 if args.verbose:
                     print_result(ctr, trg, TRG, src, SRC, sys.stderr)
@@ -63,7 +63,10 @@ def main():
         for i, line in enumerate(sys.stdin):
             line = list(load_nmt_test_data([line.strip()], SRC))
             trg = model(line[0], gen_limit=args.gen_limit)
-            print_result(i, trg, TRG, line[0], SRC, sys.stdout)
+            if args.verbose:
+                print_result(i, trg, TRG, line[0], SRC, sys.stderr)
+            if ao_fp is not None:
+                AlignmentVisualizer.print(trg.a, i, line[0], trg.y, SRC, TRG, fp=ao_fp)
             print(TRG.str_rpr(trg.y[0]))
     
     if ao_fp is not None:
@@ -74,7 +77,7 @@ def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
         print(ctr + i, file=fp)
         print("SRC:", SRC.str_rpr(sent), file=fp)
         print("TRG:", TRG.str_rpr(result), file=fp)
-    
+   
     if trg.a is not None:
         AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp)
 
