@@ -13,7 +13,7 @@ def unsorted_batch(x_batch, SRC):
         x_batch[i] += [SRC.eos_id() for _ in range(max_len-len(x_batch[i]))]
     return x_batch
 
-def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False):
+def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False, debug=False):
     rep_rare = lambda vocab, w, count, cut: vocab[w] if count is None or count[w] > cut else vocab.unk_id()
     rep_unk  = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
     convert_to_id = lambda vocab, w, count, cut: rep_unk(vocab, w) if replace_unknown else rep_rare(vocab, w, count, cut)
@@ -27,7 +27,7 @@ def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None
         trg = [convert_to_id(TRG, word, trg_count, y_cut) for word in trg]
         holder.append((src, trg))
 
-    for src, trg in sorted(holder, key=lambda x: len(x[0])):
+    for src, trg in sorted(holder, key=lambda x: len(x[0]), reverse=debug):
         x_batch.append(src), y_batch.append(trg)
         item_count += 1
 
@@ -88,7 +88,7 @@ def load_pos_test_data(lines, SRC, batch_size=1):
 """
 * NMT *
 """
-def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
+def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1, debug=False):
     src_count = defaultdict(lambda:0)
     trg_count = defaultdict(lambda:0)
     SRC  = Vocabulary(unk=True, eos=True)
@@ -108,7 +108,7 @@ def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
    
     # Data generator
     data_generator = load_train_data(data, SRC, TRG, batch_size, \
-            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=cut_threshold)
+            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=cut_threshold, debug=debug)
     
     # Return
     return SRC, TRG, data_generator

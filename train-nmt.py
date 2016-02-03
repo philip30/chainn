@@ -44,8 +44,7 @@ def main():
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
-            cut = args.unk_cut if not args.debug else 0
-            SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=cut)
+            SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
 
     # Setup model
     UF.trace("Setting up classifier")
