@@ -4,7 +4,7 @@ import chainer.functions as F
 from chainn.util import functions as UF
 import numpy as np
 
-from chainer import optimizers
+from chainer import optimizers, ChainList
 from chainer.links.connection.linear import Linear
 from chainer.links.connection.embed_id import EmbedID
 from chainer.links.connection.lstm import LSTM
@@ -35,9 +35,13 @@ class ModelFile:
         print(x, file=self.__fp)
 
     def write_vector(self, x):
+        if x is None: return
+        x = x.data
         self.write(vtos(x))
 
     def write_matrix(self, x):
+        if x is None: return
+        x = x.data
         for row in x:
             self.write_vector(row)
 
@@ -52,11 +56,15 @@ class ModelFile:
         return next(self.__fp).strip()
 
     def read_vector(self, x, tp):
+        if x is None: return
         data = stov(self.read(), tp)
+        x = x.data
         for i in range(len(data)):
             x[i] = data[i]
 
     def read_matrix(self, x, tp):
+        if x is None: return
+        x = x.data
         for row in x:
             self.read_vector(row, tp)
     
@@ -68,16 +76,16 @@ class ModelFile:
 
     # Chainer Link Write
     def write_embed(self, f):
-        self.write_matrix(f.W.data)
+        self.write_matrix(f.W)
 
     def write_linear(self, f):
-        self.write_matrix(f.W.data)
-        self.write_vector(f.b.data)
+        self.write_matrix(f.W)
+        self.write_vector(f.b)
 
     def write_lstm(self, f):
-        self.write_matrix(f.upward.W.data)
-        self.write_vector(f.upward.b.data)
-        self.write_matrix(f.lateral.W.data)
+        self.write_matrix(f.upward.W)
+        self.write_vector(f.upward.b)
+        self.write_matrix(f.lateral.W)
     
     def write_linter(self, f):
         self.write(f.W.data[0])
@@ -85,18 +93,18 @@ class ModelFile:
     # Chainer Link Read
     def read_embed(self, f):
         UF.trace("Reading Embed", debug_level=1)
-        self.read_matrix(f.W.data, float)
+        self.read_matrix(f.W, float)
 
     def read_linear(self, f):
         UF.trace("Reading Linear", debug_level=1)
-        self.read_matrix(f.W.data, float)
-        self.read_vector(f.b.data, float)
+        self.read_matrix(f.W, float)
+        self.read_vector(f.b, float)
 
     def read_lstm(self, f):
         UF.trace("Reading LSTM", debug_level=1)
-        self.read_matrix(f.upward.W.data, float)
-        self.read_vector(f.upward.b.data, float)
-        self.read_matrix(f.lateral.W.data, float)
+        self.read_matrix(f.upward.W, float)
+        self.read_vector(f.upward.b, float)
+        self.read_matrix(f.lateral.W, float)
 
     def read_linter(self, f):
         UF.trace("Reading Linear Interpolation", debug_level=1)
@@ -116,7 +124,7 @@ class ModelFile:
                 self.read_lstm(param[i])
             elif type(item) == LinearInterpolation:
                 self.read_linter(param[i])
-            elif type(item) == StackLSTM:
+            elif issubclass(item.__class__, ChainList):
                 self.read_param_list(param[i])
             else:
                 raise NotImplementedError(type(item))
@@ -131,7 +139,7 @@ class ModelFile:
                 self.write_lstm(item)
             elif type(item) == LinearInterpolation:
                 self.write_linter(item)
-            elif type(item) == StackLSTM:
+            elif issubclass(item.__class__, ChainList):
                 self.write_param_list(item)
             else:
                 raise NotImplementedError(type(item))

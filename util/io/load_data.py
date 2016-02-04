@@ -42,20 +42,31 @@ def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None
 
 def load_test_data(lines, SRC, batch_size=1, preprocessing=strip_split):
     rep_rare = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
-    
-    item_count = 0
-    x_batch    = []
-    for src in lines:
+    holder     = []
+    for i, src in enumerate(lines):
         src = [rep_rare(SRC, word) for word in preprocessing(src)]
+        holder.append((src, i))
+
+    ret, ret_id = [], []
+    item_count  = 0
+    x_batch     = []
+    id_batch    = []
+    for src, i in sorted(holder, key=lambda x:len(x[0])):
         x_batch.append(src)
+        id_batch.append(i)
         item_count += 1
 
         if item_count % batch_size == 0:
-            yield unsorted_batch(x_batch, SRC)
+            ret.append(unsorted_batch(x_batch, SRC))
+            ret_id.append(id_batch)
             x_batch = []
+            id_batch = []
     
     if len(x_batch) != 0:
-        yield unsorted_batch(x_batch, SRC)
+        ret.append(unsorted_batch(x_batch, SRC))
+        ret_id.append(id_batch)
+    
+    return ret, ret_id
 
 """
 * POS TAGGER *

@@ -78,7 +78,7 @@ class EncDecNMT(ChainnClassifier):
 
         output = DecodingOutput(output, alignment)
         if is_train:
-            accum_loss = accum_loss / gen_limit
+            accum_loss = accum_loss
             accum_acc  = accum_acc  / gen_limit
             return accum_loss, accum_acc, output
         else:

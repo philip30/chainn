@@ -11,14 +11,14 @@ class Args:
     def __init__(self, X, Y):
         self.input = len(X)
         self.output = len(Y)
-        self.hidden = 5
-        self.embed = 5
-        self.depth = 5
+        self.hidden = 3
+        self.embed = 1
+        self.depth = 2
 
 class TestEfAttn(TestCase):
     def setUp(self):
-        src=["I am Philip", "I am a student"]
-        trg=["私 は フィリップ です", "私 は 学生 です"]
+        src=["I am Philip .", "I am a student ."]
+        trg=["私 は フィリップ です .", "私 は 学生 です ."]
         SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=0, batch_size=len(src))
         self.model = Attentional(SRC, TRG, Args(SRC,TRG))
         self.data = data

@@ -7,7 +7,7 @@ import chainn.util.functions as UF
 from collections import defaultdict
 from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile, AlignmentVisualizer
 from chainn.model import EncDecNMT
-from chainer import optimizers
+from chainer import optimizer, optimizers
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -50,6 +50,8 @@ def main():
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
     model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
+    opt.add_hook(optimizer.GradientClipping(5))
+
 
     # Begin Training
     UF.trace("Begin training NMT")

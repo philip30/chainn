@@ -3,7 +3,7 @@ import chainer.functions as F
 import chainer.links as L
 
 # Chainer
-from chainer import Variable
+from chainer import Variable, ChainList
 
 # Chainn
 from chainn import functions as UF
@@ -16,6 +16,21 @@ from chainn.util import DecodingOutput
 # (Luong et al., 2015)
 # http://arxiv.org/pdf/1508.04025v5.pdf
 
+class AlignmentModel(ChainList):
+    def __init__(self, H, depth):
+        l = []
+        for i in range(depth):
+            l.append(L.Linear(H, H, nobias=True, initialW=np.random.uniform(-0.1, 0.1, (H,H))))
+        l.append(L.Linear(H,1))
+        super(AlignmentModel, self).__init__(*l)
+
+    def __call__(self, inp):
+        ret = None
+        for layer in self:
+            ret = layer(inp if ret is None else ret)
+        return ret
+
+
 class Attentional(ChainnBasicModel):
     name = "attn" 
     
@@ -26,7 +41,8 @@ class Attentional(ChainnBasicModel):
         self.EF = StackLSTM(E,H,depth)
         self.EB = StackLSTM(E,H,depth)
         self.AE = L.Linear(H, H)
-        self.AS = L.Linear(H, H)
+        self.HH = L.Linear(H, H)
+        self.align = AlignmentModel(2*H, 2)
         self.WC = L.Linear(2*H, H)
         self.WS = L.Linear(H, O)
         self.OE = L.EmbedID(O, E)
@@ -36,9 +52,10 @@ class Attentional(ChainnBasicModel):
         # Encoder           
         ret.append(self.EF)         # EF
         ret.append(self.EB)         # EB
-        # Alignment Weight
         ret.append(self.AE)
-        ret.append(self.AS)
+        # Alignment Model
+        ret.append(self.align)
+        ret.append(self.HH)
         # Decoder
         ret.append(self.WC)         # WC
         ret.append(self.WS)         # WS
@@ -71,7 +88,6 @@ class Attentional(ChainnBasicModel):
             s_i = self.AE(s[i][0]) + s[i][1]
             if i == len(s)-1:
                 self.h = s_i
-
             s_i = F.reshape(s_i, (batch_size, hidden_size, 1))
             S = s_i if S is None else F.concat((S, s_i), axis=2)
 
@@ -88,9 +104,19 @@ class Attentional(ChainnBasicModel):
 
         # Calculate alignment weights
         s, h = self.s, self.h
-
-        a = F.exp(f(F.reshape(F.batch_matmul(h, s, transa=True), (batch_size, src_len, 1))))
-        a = F.reshape(F.batch_matmul(a, 1/F.sum(a, axis=1)), (batch_size, src_len))
+        ### Making them into same shapes
+        h = F.reshape(f(self.HH(h)), (batch_size, hidden_size, 1))
+        h = F.reshape(F.swapaxes(F.concat(F.broadcast(h, s), axis=1), 1, 2), (batch_size * src_len, 2 * hidden_size))
+        ### Aligning them
+        a = F.exp(f(self.align(h)))
+        ### Restore the shape
+        a = F.reshape(a, (batch_size, src_len))
+        ### Renormalizing with the norm
+        Z = F.reshape(1/F.sum(a, axis=1), (batch_size, 1))
+        a = F.batch_matmul(a, Z)
+        ### This is the old way
+ #       a = F.exp(f(F.reshape(F.batch_matmul(h, s, transa=True), (batch_size, src_len, 1))))
+ #       a = F.reshape(F.batch_matmul(a, 1/F.sum(a, axis=1)), (batch_size, src_len))
 
         # Calculate context vector
         c = F.reshape(F.batch_matmul(s, a), (batch_size, hidden_size))

@@ -45,7 +45,7 @@ class TestPOS(TestCase):
         X = Vocabulary()
         X["I"], X["live"], X["in"]
 
-        data = list(load_pos_test_data(test, X))
+        data, _ = list(load_pos_test_data(test, X))
 
         data_exp = [\
                 [[X["I"], X["live"], X["in"], X.unk_id()]]\

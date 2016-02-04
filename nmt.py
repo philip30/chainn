@@ -42,14 +42,17 @@ def main():
         # Batched decoding
         UF.trace("Loading test data...")
         with open(args.src) as src_fp:
-            data = load_nmt_test_data(src_fp, SRC, batch_size=args.batch)
+            data, ids = load_nmt_test_data(src_fp, SRC, batch_size=args.batch)
             ctr  = 0
             UF.trace("Decoding started.")
-            for src in data:
+
+            output = {}
+            for src, src_id in zip(data, ids):
                 trg = model(src, gen_limit=args.gen_limit)
                
-                for trg_i in trg.y:
-                    print(TRG.str_rpr(trg_i))
+                for trg_i, id_i in zip(trg.y, src_id):
+                    output[id_i] = trg_i
+                    #print(TRG.str_rpr(trg_i))
                 
                 if ao_fp is not None:
                     AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=ao_fp)
@@ -57,11 +60,14 @@ def main():
                 if args.verbose:
                     print_result(ctr, trg, TRG, src, SRC, sys.stderr)
                 ctr += len(src)
+
+            for _, out in sorted(output.items(), key=lambda x:x[0]):
+                print(TRG.str_rpr(out))
     else:
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
         for i, line in enumerate(sys.stdin):
-            line = list(load_nmt_test_data([line.strip()], SRC))
+            line, _ = list(load_nmt_test_data([line.strip()], SRC))
             trg = model(line[0], gen_limit=args.gen_limit)
             if args.verbose:
                 print_result(i, trg, TRG, line[0], SRC, sys.stderr)
