@@ -21,19 +21,18 @@ class EncDecNMT(ChainnClassifier):
         self._all_models = [EncoderDecoder, Attentional, DictAttentional]
         super(EncDecNMT, self).__init__(*args, **kwargs)
         
-    def __call__(self, x_data, y_data=None, gen_limit=50):
+    def __call__(self, x_data, y_data=None, is_train=True, gen_limit=50):
         # Unpacking
         xp         = self._xp
         batch_size = len(x_data)
         model      = self._model
-        is_train   = y_data is not None
         EOL        = self._trg_voc.eos_id()
         
         # If it is training, gen limit should be = y_data
         if y_data is not None:
             gen_limit = len(y_data[0])
         # Perform encoding + Reset state
-        model.predictor.reset_state(x_data, y_data)
+        model.predictor.reset_state(x_data, y_data, is_train)
 
         output    = [[] for _ in range(batch_size)]
         alignment = [[[] for _ in range(gen_limit)] for _ in range(batch_size)]
@@ -42,16 +41,16 @@ class EncDecNMT(ChainnClassifier):
 
         # Decoding
         for j in range(gen_limit):
-            if is_train:
+            if y_data is not None:
                 s_t = Variable(xp.array([y_data[i][j] for i in range(len(y_data))], dtype=np.int32))
-                accum_loss += model(x_data, s_t) # Decode one step
+                accum_loss += model(x_data, s_t, is_train=is_train) # Decode one step
                 accum_acc  += model.accuracy
                 out = model.output
             else:
                 out = model(x_data)
             
             # Collecting output
-            if not is_train or self._collect_output:
+            if y_data is None or self._collect_output:
                 y = UF.argmax(out.y.data)
                 for i in range(len(y)):
                     output[i].append(y[i])
@@ -65,7 +64,7 @@ class EncDecNMT(ChainnClassifier):
                         # Break if all sentences end with EOL
                 else:
                     alignment = None
-            if not is_train and all(output[i][j] == EOL for i in range(len(output))):
+            if y_data is None and all(output[i][j] == EOL for i in range(len(output))):
                 break
 
             if is_train:
@@ -77,8 +76,8 @@ class EncDecNMT(ChainnClassifier):
         
 
         output = DecodingOutput(output, alignment)
-        if is_train:
-            accum_loss = accum_loss
+        if y_data is not None:
+            accum_loss = accum_loss / gen_limit
             accum_acc  = accum_acc  / gen_limit
             return accum_loss, accum_acc, output
         else:

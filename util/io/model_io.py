@@ -4,7 +4,7 @@ import chainer.functions as F
 from chainn.util import functions as UF
 import numpy as np
 
-from chainer import optimizers, ChainList
+from chainer import optimizers, ChainList, Variable
 from chainer.links.connection.linear import Linear
 from chainer.links.connection.embed_id import EmbedID
 from chainer.links.connection.lstm import LSTM
@@ -36,7 +36,8 @@ class ModelFile:
 
     def write_vector(self, x):
         if x is None: return
-        x = x.data
+        if type(x) == Variable:
+            x = x.data
         self.write(vtos(x))
 
     def write_matrix(self, x):

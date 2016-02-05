@@ -34,15 +34,15 @@ def main():
     # data
     UF.trace("Loading test data + dictionary from stdin")
     test, ids = load_pos_test_data(sys.stdin.readlines(), X, args.batch)
-       
+
     # POS Tagging
     UF.trace("Start Tagging")
     out = {}
     for batch, batch_id in zip(test, ids):
         tag_result = model(batch)
-        for o_id, inp, result in zip(batch_id, batch, tag_result):
-            out[o_id] = result
-            
+        for o_id, inp, res in zip(batch_id, batch, tag_result):
+            out[o_id] = res
+             
             if args.verbose:
                 inp    = [X.tok_rpr(x) for x in inp]
                 result = [Y.tok_rpr(x) for x in result]

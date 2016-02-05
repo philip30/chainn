@@ -27,7 +27,7 @@ class AlignmentModel(ChainList):
     def __call__(self, inp):
         ret = None
         for layer in self:
-            ret = layer(inp if ret is None else ret)
+            ret = F.tanh(layer(inp if ret is None else ret))
         return ret
 
 
@@ -62,16 +62,14 @@ class Attentional(ChainnBasicModel):
         ret.append(self.OE)         # OE
         return ret
     
-    def reset_state(self, x_data, y_data):
+    def reset_state(self, x_data, y_data, is_train=True):
         batch_size = len(x_data)
         src_len    = len(x_data[0])
         hidden_size = self._hidden
         xp = self._xp
         f  = self._activation
-        is_train = y_data is not None
         self.EF.reset_state()
         self.EB.reset_state()
-        
         # Forward + backward encoding
         s = [[0,0] for _ in range(src_len)]
         for j in range(src_len):
@@ -79,8 +77,8 @@ class Attentional(ChainnBasicModel):
             s_xb      = Variable(xp.array([x_data[i][-j-1] for i in range(batch_size)], dtype=np.int32))
             hf, hb    = self.EF(self.IE(s_x), is_train), self.EB(self.IE(s_xb), is_train)
             # concatenating them
-            s[j][0]    = f(hf)
-            s[-j-1][1] = f(hb)
+            s[j][0]    = hf
+            s[-j-1][1] = hb
 
         # Joining the encoding data together
         S = None
@@ -94,13 +92,12 @@ class Attentional(ChainnBasicModel):
         self.s = S
         return S
      
-    def __call__ (self, x_data, train_ref=None, update=True, debug=False):
+    def __call__ (self, x_data, train_ref=None, update=True, is_train=True, debug=False):
         xp = self._xp
         src_len = len(x_data[0])
         batch_size = len(x_data)
         hidden_size = self._hidden
         f  = self._activation
-        is_train = train_ref is not None
 
         # Calculate alignment weights
         s, h = self.s, self.h
@@ -135,8 +132,8 @@ class Attentional(ChainnBasicModel):
                 # Testing
                 wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
             w_n = self.OE(wt)
-            w_nf = f(self.EF(w_n, is_train))
-            w_nb = f(self.EB(w_n, is_train))
+            w_nf = self.EF(w_n, is_train)
+            w_nb = self.EB(w_n, is_train)
             self.h = self.AE(w_nf) + w_nb
         return DecodingOutput(y, a)
 

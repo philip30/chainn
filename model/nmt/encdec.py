@@ -40,7 +40,7 @@ class EncoderDecoder(ChainnBasicModel):
         return ret
     
     # Encoding all the source sentence
-    def reset_state(self, x_data, y_data):
+    def reset_state(self, x_data, y_data, is_train=True):
         # Unpacking
         batch_size = len(x_data)
         src_len    = len(x_data[0])
@@ -58,11 +58,10 @@ class EncoderDecoder(ChainnBasicModel):
         return self.HH(h)
 
     # Decode one word
-    def __call__ (self, x_data, train_ref=None, update=True):
+    def __call__ (self, x_data, train_ref=None, is_train=True, update=True):
         # Unpacking
         xp = self._xp
         f  = self._activation
-        is_train = train_ref is not None
 
         # Decoding
         y = self.WS(self.h)

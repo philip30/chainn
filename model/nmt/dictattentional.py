@@ -25,7 +25,7 @@ class DictAttentional(Attentional):
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._dict = self._load_dictionary(args.dict)
 
-    def reset_state(self, src, trg):
+    def reset_state(self, src, trg, is_train=True):
         SRC = self._src_voc
         TRG = self._trg_voc
         dct = self._dict

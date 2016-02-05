@@ -32,6 +32,8 @@ def parse_args():
     parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn")
     parser.add_argument("--debug",action="store_true")
     parser.add_argument("--unk_cut", type=int, default=1)
+    parser.add_argument("--dev", type=str)
+    parser.add_argument("--dev_ref", type=str)
     # DictAttn
     parser.add_argument("--dict",type=str)
     return parser.parse_args()
@@ -46,19 +48,25 @@ def main():
         with open(args.trg) as trg_fp:
             SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
 
+    
+    if args.dev and args.dev_ref:
+        with open(args.dev) as src_fp:
+            with open(args.dev) as trg_fp:
+                _, _, dev_data = load_nmt_train_data(src_fp, trg_fp, SRC=SRC, TRG=TRG, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
+    
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
     model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
     opt.add_hook(optimizer.GradientClipping(5))
 
-
     # Begin Training
     UF.trace("Begin training NMT")
     EP         = args.epoch
     save_ctr   = 0  # save counter
     save_len   = args.save_len
-    prev_loss  = 1e10
+    prev_loss  = 150
+    prev_dev_loss = 150
     for epoch in range(EP):
         trained = 0
         epoch_loss = 0
@@ -77,19 +85,32 @@ def main():
             model.report()
         epoch_loss /= len(data)
         epoch_accuracy /= len(data)
+        
+        UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
+        UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
+        UF.trace("Train Accuracy:", float(epoch_accuracy))
 
-        # Decaying learning rate
-        if (prev_loss < epoch_loss or epoch > 10) and hasattr(opt,'lr'):
-            try:
-                opt.lr *= 0.5
-                UF.trace("Reducing LR:", opt.lr)
-            except: pass
-        prev_loss = epoch_loss
+        # Evaluating on development set
+        if args.dev:
+            dev_loss = 0
+            for src, trg in dev_data:
+                loss, _, _ = model.train(src, trg, update=False)
+                dev_loss += loss
+            dev_loss /= len(dev_data)
+            UF.trace("Dev Loss:", float(prev_dev_loss), "->", float(dev_loss))
+            UF.trace("Dev PPL :", math.exp(float(prev_dev_loss)), "->", math.exp(float(dev_loss)))
+            prev_dev_loss = dev_loss
        
-        UF.trace("Epoch Loss:", float(epoch_loss))
-        UF.trace("Epoch Accuracy:", float(epoch_accuracy))
-        UF.trace("PPL:", math.exp(float(epoch_loss)))
-
+        # Converge
+#        if not args.dev:
+#            if prev_loss < epoch_loss:
+#                args.lr /= 2
+#        else:
+#            if prev_dev_loss < dev_loss:
+#                args.lr /= 2
+        
+        prev_loss = epoch_loss
+        
         # saving model
         if (save_ctr + 1) % save_len == 0:
             UF.trace("saving model to " + args.model_out + "...")
@@ -126,6 +147,10 @@ def check_args(args):
         if args.depth > 1:
             raise ValueError("Currently depth is not supported for both of these models")
     
+    # args.dev exor args.dev_ref
+    if (args.dev and not args.dev_ref) or (not args.dev and args.dev_ref):
+        raise ValueError("Need to specify both --dev and --dev_ref together")
+
     if args.use_cpu:
         args.gpu = -1
 

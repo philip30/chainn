@@ -99,11 +99,14 @@ def load_pos_test_data(lines, SRC, batch_size=1):
 """
 * NMT *
 """
-def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1, debug=False):
+def load_nmt_train_data(src, trg, SRC=None, TRG=None, batch_size=1, cut_threshold=1, debug=False):
     src_count = defaultdict(lambda:0)
     trg_count = defaultdict(lambda:0)
-    SRC  = Vocabulary(unk=True, eos=True)
-    TRG  = Vocabulary(unk=True, eos=True)
+    rep_unk   = SRC is not None and TRG is not None
+    if SRC is None:
+        SRC  = Vocabulary(unk=True, eos=True)
+    if TRG is None:
+        TRG  = Vocabulary(unk=True, eos=True)
     data = []
     # Reading in data
     for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
@@ -119,7 +122,7 @@ def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1, debug=False):
    
     # Data generator
     data_generator = load_train_data(data, SRC, TRG, batch_size, \
-            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=cut_threshold, debug=debug)
+            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=cut_threshold, debug=debug, replace_unknown=rep_unk)
     
     # Return
     return SRC, TRG, data_generator
