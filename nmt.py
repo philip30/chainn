@@ -20,6 +20,7 @@ def parse_args():
     parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu)")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--alignment_out", type=str)
+    parser.add_argument("--eos_disc", type=float, default=0.0)
     return parser.parse_args()
 
 def check_args(args):
@@ -37,6 +38,7 @@ def main():
     model = EncDecNMT(args, use_gpu=args.gpu, collect_output=True)
     SRC, TRG  = model.get_vocabularies()
 
+    decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc}
     # Decoding
     if args.src:
         # Batched decoding
@@ -48,11 +50,10 @@ def main():
 
             output = {}
             for src, src_id in zip(data, ids):
-                trg = model(src, gen_limit=args.gen_limit)
+                trg = model.decode(src, **decoding_options)
                
                 for trg_i, id_i in zip(trg.y, src_id):
                     output[id_i] = trg_i
-                    #print(TRG.str_rpr(trg_i))
                 
                 if ao_fp is not None:
                     AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=ao_fp)
@@ -68,7 +69,7 @@ def main():
         # Line by line decoding
         for i, line in enumerate(sys.stdin):
             line, _ = list(load_nmt_test_data([line.strip()], SRC))
-            trg = model(line[0], gen_limit=args.gen_limit)
+            trg = model.decode(line[0], **decoding_options)
             if args.verbose:
                 print_result(i, trg, TRG, line[0], SRC, sys.stderr)
             if ao_fp is not None:

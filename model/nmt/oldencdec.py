@@ -34,7 +34,7 @@ class EncoderDecoder(ChainnBasicModel):
         return ret
     
     # Encoding all the source sentence
-    def reset_state(self, x_data, y_data, is_train=True):
+    def reset_state(self, x_data, y_data, *args, **kwargs):
         # Unpacking
         xp, hidden  = self._xp, self._hidden
         row_len     = len(x_data)
@@ -55,7 +55,7 @@ class EncoderDecoder(ChainnBasicModel):
         return self._h
 
     # Decode one word
-    def __call__ (self, x_data, train_ref=None, is_train=True, update=True):
+    def __call__ (self, x_data, train_ref=None, *args, **kwargs):
         # Unpacking
         xp = self._xp
         f  = self._activation
@@ -66,13 +66,12 @@ class EncoderDecoder(ChainnBasicModel):
         s_j      = f(QJ(s_q))
         y        = JY(s_j)
         
-        if update:
-            if train_ref is not None:
-                upd = Variable(xp.array(train_ref.data, dtype=np.int32))
-            else:
-                upd = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
-    
-            # Updating
-            self._h  = F.lstm(s_c, YQ(upd) + QQ(s_q))
+        if train_ref is not None:
+            upd = Variable(xp.array(train_ref.data, dtype=np.int32))
+        else:
+            upd = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
+
+        # Updating
+        self._h  = F.lstm(s_c, YQ(upd) + QQ(s_q))
         return DecodingOutput(y)
 

@@ -27,7 +27,7 @@ class AlignmentModel(ChainList):
     def __call__(self, inp):
         ret = None
         for layer in self:
-            ret = F.tanh(layer(inp if ret is None else ret))
+            ret = layer(inp if ret is None else ret)
         return ret
 
 
@@ -62,7 +62,7 @@ class Attentional(ChainnBasicModel):
         ret.append(self.OE)         # OE
         return ret
     
-    def reset_state(self, x_data, y_data, is_train=True):
+    def reset_state(self, x_data, y_data, is_train=False, *args, **kwargs):
         batch_size = len(x_data)
         src_len    = len(x_data[0])
         hidden_size = self._hidden
@@ -92,7 +92,7 @@ class Attentional(ChainnBasicModel):
         self.s = S
         return S
      
-    def __call__ (self, x_data, train_ref=None, update=True, is_train=True, debug=False):
+    def __call__ (self, x_data, train_ref=None, is_train=False, eos_disc=0.0, *args, **kwargs):
         xp = self._xp
         src_len = len(x_data[0])
         batch_size = len(x_data)
@@ -120,21 +120,27 @@ class Attentional(ChainnBasicModel):
         ht = self.WC(F.concat((self.h, c), axis=1))
         yp = self.WS(ht)
         
+        # To adjust brevity score during decoding
+        if train_ref is None:
+            v = xp.ones(len(self._trg_voc), dtype=np.float32)
+            v[self._trg_voc.eos_id()] = 1-eos_disc
+            v  = F.broadcast_to(Variable(v), yp.data.shape)
+            yp = yp * v
+
         # Enhance y
         y = self._additional_score(yp, a, x_data)
 
         # Calculate next hidden hidden state
-        if update:
-            if train_ref is not None:
-                # Training
-                wt = train_ref
-            else:
-                # Testing
-                wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
-            w_n = self.OE(wt)
-            w_nf = self.EF(w_n, is_train)
-            w_nb = self.EB(w_n, is_train)
-            self.h = self.AE(w_nf) + w_nb
+        if train_ref is not None:
+            # Training
+            wt = train_ref
+        else:
+            # Testing
+            wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
+        w_n = self.OE(wt)
+        w_nf = self.EF(w_n, is_train)
+        w_nb = self.EB(w_n, is_train)
+        self.h = self.AE(w_nf) + w_nb
         return DecodingOutput(y, a)
 
     def _additional_score(self, y, a, x_data):

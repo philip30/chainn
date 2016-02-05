@@ -25,7 +25,7 @@ class DictAttentional(Attentional):
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._dict = self._load_dictionary(args.dict)
 
-    def reset_state(self, src, trg, is_train=True):
+    def reset_state(self, src, trg, *args, **kwargs):
         SRC = self._src_voc
         TRG = self._trg_voc
         dct = self._dict
@@ -45,7 +45,7 @@ class DictAttentional(Attentional):
             prob_dict.append(prob)
         self.prob_dict = F.swapaxes(Variable(xp.array(prob_dict, dtype=np.float32)), 0, 1)
 
-        return super(DictAttentional, self).reset_state(src, trg) 
+        return super(DictAttentional, self).reset_state(src, trg, *args, **kwargs) 
 
     def _load_dictionary(self, dict_dir):
         if type(dict_dir) is not str:

@@ -21,7 +21,7 @@ class EncDecNMT(ChainnClassifier):
         self._all_models = [EncoderDecoder, Attentional, DictAttentional]
         super(EncDecNMT, self).__init__(*args, **kwargs)
         
-    def __call__(self, x_data, y_data=None, is_train=True, gen_limit=50):
+    def __call__(self, x_data, y_data=None, is_train=True, gen_limit=50, *args, **kwargs):
         # Unpacking
         xp         = self._xp
         batch_size = len(x_data)
@@ -32,7 +32,7 @@ class EncDecNMT(ChainnClassifier):
         if y_data is not None:
             gen_limit = len(y_data[0])
         # Perform encoding + Reset state
-        model.predictor.reset_state(x_data, y_data, is_train)
+        model.predictor.reset_state(x_data, y_data, is_train, *args, **kwargs)
 
         output    = [[] for _ in range(batch_size)]
         alignment = [[[] for _ in range(gen_limit)] for _ in range(batch_size)]
@@ -43,11 +43,11 @@ class EncDecNMT(ChainnClassifier):
         for j in range(gen_limit):
             if y_data is not None:
                 s_t = Variable(xp.array([y_data[i][j] for i in range(len(y_data))], dtype=np.int32))
-                accum_loss += model(x_data, s_t, is_train=is_train) # Decode one step
+                accum_loss += model(x_data, s_t, is_train=is_train, *args, **kwargs) # Decode one step
                 accum_acc  += model.accuracy
                 out = model.output
             else:
-                out = model(x_data)
+                out = model(x_data, is_train=is_train, *args, **kwargs)
             
             # Collecting output
             if y_data is None or self._collect_output:
@@ -56,7 +56,6 @@ class EncDecNMT(ChainnClassifier):
                     output[i].append(y[i])
                 
                 a = out.a
-
                 if a is not None:
                     for i, x in enumerate(a.data):
                         for x_a in x:
@@ -67,13 +66,12 @@ class EncDecNMT(ChainnClassifier):
             if y_data is None and all(output[i][j] == EOL for i in range(len(output))):
                 break
 
-            if is_train:
+            if y_data is not None:
                 bp_ctr += 1
                 if bp_ctr % BP_LEN == 0:
                     bp_ctr = 0
                     accum_loss.backward()
                     accum_loss.unchain_backward()
-        
 
         output = DecodingOutput(output, alignment)
         if y_data is not None:

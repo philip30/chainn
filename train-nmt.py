@@ -121,8 +121,10 @@ def main():
         save_ctr += 1
    
     if (save_ctr +1) % save_len != 0:
+        UF.trace("saving model to " + args.model_out + "...")
         with ModelFile(open(args.model_out, "w")) as model_out:
             model.save(model_out)
+        UF.trace("training complete!")
 
 def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
     SRC, TRG = src_voc, trg_voc

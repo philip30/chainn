@@ -45,6 +45,9 @@ class ChainnClassifier(object):
             self._opt.update()
         return accum_loss.data, accum_acc.data, output
 
+    def decode(self, x_data, *args, **kwargs):
+        return self(x_data, is_train=False, *args, **kwargs) 
+
     def get_vocabularies(self):
         return self._src_voc, self._trg_voc
 
