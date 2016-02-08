@@ -120,7 +120,7 @@ def main():
         gc.collect()
         save_ctr += 1
    
-    if (save_ctr +1) % save_len != 0:
+    if save_ctr % save_len != 0:
         UF.trace("saving model to " + args.model_out + "...")
         with ModelFile(open(args.model_out, "w")) as model_out:
             model.save(model_out)
@@ -145,9 +145,9 @@ def check_args(args):
     else:
         if args.dict:
             raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
-    if args.model == "attn":
-        if args.depth > 1:
-            raise ValueError("Currently depth is not supported for both of these models")
+#    if args.model == "attn":
+#        if args.depth > 1:
+#            raise ValueError("Currently depth is not supported for both of these models")
     
     # args.dev exor args.dev_ref
     if (args.dev and not args.dev_ref) or (not args.dev and args.dev_ref):

@@ -17,8 +17,7 @@ class StackLSTM(ChainList):
         ret = None
         for i, lstm in enumerate(self):
             h = inp if i == 0 else ret
-            ret = lstm(h)
-            ret = F.dropout(ret, train=is_train, ratio=0.2)
+            ret = F.dropout(lstm(h))
         return ret
     
     def reset_state(self):

@@ -27,7 +27,7 @@ class AlignmentModel(ChainList):
     def __call__(self, inp):
         ret = None
         for layer in self:
-            ret = layer(inp if ret is None else ret)
+            ret = F.tanh(layer(inp if ret is None else ret))
         return ret
 
 
@@ -40,6 +40,8 @@ class Attentional(ChainnBasicModel):
         self.IE = L.EmbedID(I,E)
         self.EF = StackLSTM(E,H,depth)
         self.EB = StackLSTM(E,H,depth)
+        self.DF = StackLSTM(E,H,depth)
+        self.DB = StackLSTM(E,H,depth)
         self.AE = L.Linear(H, H)
         self.HH = L.Linear(H, H)
         self.align = AlignmentModel(2*H, 2)
@@ -52,6 +54,8 @@ class Attentional(ChainnBasicModel):
         # Encoder           
         ret.append(self.EF)         # EF
         ret.append(self.EB)         # EB
+        ret.append(self.DF)
+        ret.append(self.DB)
         ret.append(self.AE)
         # Alignment Model
         ret.append(self.align)
@@ -70,6 +74,8 @@ class Attentional(ChainnBasicModel):
         f  = self._activation
         self.EF.reset_state()
         self.EB.reset_state()
+        self.DF.reset_state()
+        self.DB.reset_state()
         # Forward + backward encoding
         s = [[0,0] for _ in range(src_len)]
         for j in range(src_len):
@@ -88,7 +94,9 @@ class Attentional(ChainnBasicModel):
                 self.h = s_i
             s_i = F.reshape(s_i, (batch_size, hidden_size, 1))
             S = s_i if S is None else F.concat((S, s_i), axis=2)
-
+        
+        self.DF.copy_state(self.EF)
+        self.DB.copy_state(self.DB)
         self.s = S
         return S
      
@@ -101,27 +109,27 @@ class Attentional(ChainnBasicModel):
 
         # Calculate alignment weights
         s, h = self.s, self.h
-        ### Making them into same shapes
-        h = F.reshape(f(self.HH(h)), (batch_size, hidden_size, 1))
-        h = F.reshape(F.swapaxes(F.concat(F.broadcast(h, s), axis=1), 1, 2), (batch_size * src_len, 2 * hidden_size))
-        ### Aligning them
-        a = F.exp(f(self.align(h)))
-        ### Restore the shape
-        a = F.reshape(a, (batch_size, src_len))
-        ### Renormalizing with the norm
-        Z = F.reshape(1/F.sum(a, axis=1), (batch_size, 1))
-        a = F.batch_matmul(a, Z)
+#        ### Making them into same shapes
+#        h = F.reshape(f(self.HH(h)), (batch_size, hidden_size, 1))
+#        h = F.reshape(F.swapaxes(F.concat(F.broadcast(h, s), axis=1), 1, 2), (batch_size * src_len, 2 * hidden_size))
+#        ### Aligning them
+#        a = F.exp(self.align(h))
+#        ### Restore the shape
+#        a = F.reshape(a, (batch_size, src_len))
+#        ### Renormalizing with the norm
+#        Z = F.reshape(1/F.sum(a, axis=1), (batch_size, 1))
+#        a = F.batch_matmul(a, Z)
         ### This is the old way
- #       a = F.exp(f(F.reshape(F.batch_matmul(h, s, transa=True), (batch_size, src_len, 1))))
- #       a = F.reshape(F.batch_matmul(a, 1/F.sum(a, axis=1)), (batch_size, src_len))
+        a = F.exp(f(F.reshape(F.batch_matmul(h, s, transa=True), (batch_size, src_len, 1))))
+        a = F.reshape(F.batch_matmul(a, 1/F.sum(a, axis=1)), (batch_size, src_len))
 
         # Calculate context vector
         c = F.reshape(F.batch_matmul(s, a), (batch_size, hidden_size))
-        ht = self.WC(F.concat((self.h, c), axis=1))
+        ht = F.tanh(self.WC(F.concat((self.h, c), axis=1)))
         yp = self.WS(ht)
         
         # To adjust brevity score during decoding
-        if train_ref is None:
+        if train_ref is None and eos_disc != 0.0:
             v = xp.ones(len(self._trg_voc), dtype=np.float32)
             v[self._trg_voc.eos_id()] = 1-eos_disc
             v  = F.broadcast_to(Variable(v), yp.data.shape)
@@ -138,8 +146,8 @@ class Attentional(ChainnBasicModel):
             # Testing
             wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
         w_n = self.OE(wt)
-        w_nf = self.EF(w_n, is_train)
-        w_nb = self.EB(w_n, is_train)
+        w_nf = self.DF(w_n, is_train)
+        w_nb = self.DB(w_n, is_train)
         self.h = self.AE(w_nf) + w_nb
         return DecodingOutput(y, a)
 
