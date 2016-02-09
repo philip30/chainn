@@ -3,6 +3,8 @@ by: Philip Arthur
 
 NLP toolkit implementation with (recursive) neural network. Using [chainer](https://github.com/pfnet/chainer) (v1.5+) toolkit.
 You have to install it firstly in order to use this toolkit.
+After installing chainer, please add the folder containing the folder of this project to your PYTHONPATH environment variable.
+
 Currently this repository covers implementations of:
 
  1. POS-Tagger (RNN / LSTM): ```pos.py```
@@ -10,7 +12,7 @@ Currently this repository covers implementations of:
  3. Neural Machine Translation (Encoder-Decoder, Attentional Model): ```nmt.py```.
 
 *NOTE:*
-By default the software will use GPU to do the computation. If you don't have any GPU installed, please specify ``--use_cpu`` in both training and testing.
+By default the software will use CPU to do the computation. In order to use GPU you can specify ```--gpu 0``` for using your first GPU machine, or increase the number to select another.
 
 # Usage
 Each of the implementation has their own manual:
