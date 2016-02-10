@@ -21,13 +21,21 @@ Each of the implementation has their own manual:
  2. Language Model
  3. NMT
 
-But we provide a general overview of how do you train and test the model using this toolkit.
-## Training
-For each implementation, you can train the model by running the ```train-i.py``` where ```i``` could be ```pos```, ```lm```, or ```nmt```. For example, to train a pos-tagger with 2 layer of 50 hidden nodes lstm, you can use this command:
+We provide a general overview for training and testing using this toolkit.
+
+## Training POS + LM
+For each implementation, you can train the model by running the ```train-i.py``` where ```i``` could be ```pos```, ```lm```. For example, to train a pos-tagger with 2 layer of 50 hidden nodes lstm, you can use this command:
 
 ```python3 train-pos.py --model lstm --hidden 50 --depth 2 --model_out [model_out] < [train_data]```
 
 The model will be saved in [model\_out] directory, and you have to provide a training data [train\_data].
+
+## Training NMT
+For training NMT model, it is basically the same as training ```pos``` and ```lm``` model but it just has slightly different option:
+
+```python3 train-nmt.py --model attn --hidden 256 --depth 2 --src [SRC_FILE] --trg [TRG_FILE] --model_out [model_out]```
+
+The above command will train attentional neural translation model with 256 hidden node. Currently it supports ```attn``` for attentional model and ```encdec``` for encdec model.
 
 ## Testing
 To do testing, you can use the trained model ```[model_out]``` by specifying it at ```--init_model``` options:
@@ -36,7 +44,18 @@ To do testing, you can use the trained model ```[model_out]``` by specifying it 
 
 and the software will produce a pos tag for each input.
 
+## Other (stable) options
 
+ 1. ```--epoch``` to specify how many epoch.
+ 2. ```--verbose``` to show verbosity during training / testing.
+ 3. ```--embed``` specify the size of embedding layer.
+
+The other options you find in the program is experimental.
+
+## Note 
+
+ 1. By default "Adam" will be used for optimizer.
+ 
 # Contact
 I am open for any question! Or if you found and bug, please contact me at:
 
