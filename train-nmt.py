@@ -135,8 +135,8 @@ def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
         UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
                 index+trained, source, out, ref))
    
-    if output.a is not None:
-        AlignmentVisualizer.print(output.a, trained, src, output.y, SRC, TRG, sys.stderr)
+#    if output.a is not None:
+#        AlignmentVisualizer.print(output.a, trained, src, output.y, SRC, TRG, sys.stderr)
 
 def check_args(args):
     if args.model == "dictattn":
