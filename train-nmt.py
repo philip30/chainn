@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import numpy as np
 import sys, argparse, math, gc, chainer
 import chainer.functions as F
 import chainn.util.functions as UF
@@ -7,7 +8,7 @@ import chainn.util.functions as UF
 from collections import defaultdict
 from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile, AlignmentVisualizer
 from chainn.model import EncDecNMT
-from chainer import optimizer, optimizers
+from chainer import cuda, optimizer, optimizers
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -32,33 +33,43 @@ def parse_args():
     parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn")
     parser.add_argument("--debug",action="store_true")
     parser.add_argument("--unk_cut", type=int, default=1)
-    parser.add_argument("--dev", type=str)
-    parser.add_argument("--dev_ref", type=str)
+    parser.add_argument("--seed", type=int, default=0)
+#    parser.add_argument("--dev", type=str)
+#    parser.add_argument("--dev_ref", type=str)
     # DictAttn
     parser.add_argument("--dict",type=str)
     return parser.parse_args()
 
+def init_seed(seed):
+    if seed != 0:
+        np.random.seed(seed)
+        if hasattr(cuda, "cupy"):
+            cuda.cupy.random.seed(seed)
+
 def main():
     # Preparation
     args      = check_args(parse_args())
+    
+    # init seed
+    init_seed(args.seed)
     
     # data
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
             SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
-
+            UF.trace("SRC size:", len(SRC))
+            UF.trace("TRG size:", len(TRG))
     
-    if args.dev and args.dev_ref:
-        with open(args.dev) as src_fp:
-            with open(args.dev) as trg_fp:
-                _, _, dev_data = load_nmt_train_data(src_fp, trg_fp, SRC=SRC, TRG=TRG, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
+#    if args.dev and args.dev_ref:
+#        with open(args.dev) as src_fp:
+#            with open(args.dev) as trg_fp:
+#                _, _, dev_data = load_nmt_train_data(src_fp, trg_fp, SRC=SRC, TRG=TRG, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
     
     # Setup model
     UF.trace("Setting up classifier")
     opt   = optimizers.Adam()
     model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
-    opt.add_hook(optimizer.GradientClipping(5))
 
     # Begin Training
     UF.trace("Begin training NMT")
@@ -91,16 +102,16 @@ def main():
         UF.trace("Train Accuracy:", float(epoch_accuracy))
 
         # Evaluating on development set
-        if args.dev:
-            dev_loss = 0
-            for src, trg in dev_data:
-                loss, _, _ = model.train(src, trg, update=False)
-                dev_loss += loss
-            dev_loss /= len(dev_data)
-            UF.trace("Dev Loss:", float(prev_dev_loss), "->", float(dev_loss))
-            UF.trace("Dev PPL :", math.exp(float(prev_dev_loss)), "->", math.exp(float(dev_loss)))
-            prev_dev_loss = dev_loss
-       
+#        if args.dev:
+#            dev_loss = 0
+#            for src, trg in dev_data:
+#                loss, _, _ = model.train(src, trg, update=False)
+#                dev_loss += loss
+#            dev_loss /= len(dev_data)
+#            UF.trace("Dev Loss:", float(prev_dev_loss), "->", float(dev_loss))
+#            UF.trace("Dev PPL :", math.exp(float(prev_dev_loss)), "->", math.exp(float(dev_loss)))
+#            prev_dev_loss = dev_loss
+#       
         # Converge
 #        if not args.dev:
 #            if prev_loss < epoch_loss:
@@ -145,13 +156,10 @@ def check_args(args):
     else:
         if args.dict:
             raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
-#    if args.model == "attn":
-#        if args.depth > 1:
-#            raise ValueError("Currently depth is not supported for both of these models")
-    
-    # args.dev exor args.dev_ref
-    if (args.dev and not args.dev_ref) or (not args.dev and args.dev_ref):
-        raise ValueError("Need to specify both --dev and --dev_ref together")
+   
+#    # args.dev exor args.dev_ref
+#    if (args.dev and not args.dev_ref) or (not args.dev and args.dev_ref):
+#        raise ValueError("Need to specify both --dev and --dev_ref together")
 
     if args.use_cpu:
         args.gpu = -1

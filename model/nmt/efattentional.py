@@ -46,7 +46,7 @@ class Attentional(ChainnBasicModel):
 
         # Enhance y
         y = self._additional_score(yp, a, x_data)
-
+        
         # Conceive the next state
         self.h = self._decode_next(y, train_ref=train_ref, is_train=is_train)
         return DecodingOutput(y, a)
@@ -79,7 +79,6 @@ class Encoder(ChainList):
         self.EB = StackLSTM(E, H, depth)
         self.AE = L.Linear(2*H, H)
         self.H  = H
-        
         super(Encoder, self).__init__(self.IE, self.EF, self.EB, self.AE)
 
     def __call__(self, src, is_train=False, xp=np):
@@ -116,13 +115,10 @@ class AttentionLayer(ChainList):
         super(AttentionLayer, self).__init__()
     
     def __call__(self, h, s):
-        return self._dot(F.tanh(h), F.tanh(s))
+        return self._dot(h, s)
 
     def _dot(self, h, s):
-        B, N = len(h.data), len(s.data[0])
-        a = F.exp(F.batch_matmul(s, h))
-        a = F.reshape(F.batch_matmul(a, 1/F.sum(a, axis=1)), (B, N))
-        return a
+        return F.softmax(F.batch_matmul(s, h))
 
 class Decoder(ChainList):
     def __init__(self, O, E, H, depth):

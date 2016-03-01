@@ -8,19 +8,23 @@ from chainn import functions as UF
 from chainn.link import Classifier
 from chainn.util import ModelFile
 
+def setup_gpu(use_gpu):
+    ret = None
+    if not hasattr(cuda, "cupy"):
+        use_gpu  = -1
+        ret = np
+    else:
+        if use_gpu >= 0:
+            ret = cuda.cupy
+            cuda.get_device(use_gpu).use()
+        else:
+            ret = np
+    return ret, use_gpu
+
 class ChainnClassifier(object):
     def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=-1, collect_output=False, activation=F.tanh):
         self._opt            = optimizer
-        if not hasattr(cuda, "cupy"):
-            use_gpu  = -1
-            self._xp = np
-        else:
-            if use_gpu >= 0:
-                self._xp = cuda.cupy
-                cuda.get_device(use_gpu).use()
-            else:
-                self._xp = np
-        
+        self._xp, use_gpu    = setup_gpu(use_gpu)
         self._model          = self._load_classifier()(self._load_model(args, X, Y, activation))
         self._collect_output = collect_output
         self._src_voc        = X if not args.init_model else self._model.predictor._src_voc

@@ -4,8 +4,9 @@ import copy
 from chainer import Variable, ChainList
 from chainn.link import LSTM
 
+DROP_RATIO=0.5
+
 class StackLSTM(ChainList):
-    
     def __init__(self, I, O, depth):
         chain_list = []
         for i in range(depth):
@@ -18,7 +19,7 @@ class StackLSTM(ChainList):
         for i, lstm in enumerate(self):
             h = inp if i == 0 else ret
             ret = lstm(h)
-        return F.dropout(ret, train=is_train)
+        return F.dropout(ret, train=is_train, ratio=DROP_RATIO)
     
     def reset_state(self):
         for lstm in self:
