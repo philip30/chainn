@@ -50,7 +50,7 @@ class EncDecNMT(ChainnClassifier):
                 out = model(x_data, is_train=is_train, *args, **kwargs)
             
             # Collecting output
-            if y_data is None or self._collect_output:
+            if not is_train or self._collect_output:
                 y = UF.argmax(out.y.data)
                 for i in range(len(y)):
                     output[i].append(y[i])
@@ -63,7 +63,7 @@ class EncDecNMT(ChainnClassifier):
                         # Break if all sentences end with EOL
                 else:
                     alignment = None
-            if y_data is None and all(output[i][j] == EOL for i in range(len(output))):
+            if not is_train and all(output[i][j] == EOL for i in range(len(output))):
                 break
 
             if y_data is not None:
