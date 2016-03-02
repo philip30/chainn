@@ -3,7 +3,7 @@ import chainer.functions as F
 import chainer.links as L
 
 # Chainer
-from chainer import Variable
+from chainer import Variable, ChainList
 
 # Chainn
 from chainn import functions as UF
@@ -21,99 +21,126 @@ class Attentional(ChainnBasicModel):
     
     def _construct_model(self, input, output, hidden, depth, embed):
         I, O, E, H = input, output, embed, hidden
-        ret = []
-        self.IE = L.EmbedID(I,E)
-        self.EF = StackLSTM(E,H,depth)
-        self.EB = StackLSTM(E,H,depth)
-        self.AE = L.Linear(H, H)
-        self.AS = L.Linear(H, H)
-        self.WC = L.Linear(2*H, H)
-        self.WS = L.Linear(H, O)
-        self.OE = L.EmbedID(O, E)
-
-        # Shared Embedding
-        ret.append(self.IE)         # IE
-        # Encoder           
-        ret.append(self.EF)         # EF
-        ret.append(self.EB)         # EB
-        # Alignment Weight
-        ret.append(self.AE)
-        ret.append(self.AS)
-        # Decoder
-        ret.append(self.WC)         # WC
-        ret.append(self.WS)         # WS
-        ret.append(self.OE)         # OE
-        return ret
+        self.encoder   = Encoder(I, E, H, depth)
+        self.attention = AttentionLayer()
+        self.decoder   = Decoder(O, E, H, depth)
+        return [self.encoder, self.attention, self.decoder]
     
-    def reset_state(self, x_data, y_data):
-        batch_size = len(x_data)
-        src_len    = len(x_data[0])
-        hidden_size = self._hidden
-        xp = self._xp
-        f  = self._activation
-        is_train = y_data is not None
-        self.EF.reset_state()
-        self.EB.reset_state()
+    # Encode all the words in the input sentence
+    def reset_state(self, x_data, y_data, is_train=False, *args, **kwargs):
+        self.s, s_n = self.encoder(x_data, is_train=is_train, xp=self._xp)
+        self.h = self.decoder.reset(s_n, is_train=is_train)
+        return self.s
+    
+    # Produce one target word
+    def __call__ (self, x_data, train_ref=None, is_train=False, eos_disc=0.0, *args, **kwargs):
+        # Calculate alignment weights between hidden state and source vector context
+        a  = self.attention(self.h, self.s)
         
-        # Forward + backward encoding
-        s = [[0,0] for _ in range(src_len)]
-        for j in range(src_len):
-            s_x       = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
-            s_xb      = Variable(xp.array([x_data[i][-j-1] for i in range(batch_size)], dtype=np.int32))
-            hf, hb    = self.EF(self.IE(s_x), is_train), self.EB(self.IE(s_xb), is_train)
-            # concatenating them
-            s[j][0]    = f(hf)
-            s[-j-1][1] = f(hb)
-
-        # Joining the encoding data together
-        S = None
-        for i in range(len(s)):
-            s_i = self.AE(s[i][0]) + s[i][1]
-            if i == len(s)-1:
-                self.h = s_i
-
-            s_i = F.reshape(s_i, (batch_size, hidden_size, 1))
-            S = s_i if S is None else F.concat((S, s_i), axis=2)
-
-        self.s = S
-        return S
-     
-    def __call__ (self, x_data, train_ref=None, update=True, debug=False):
-        xp = self._xp
-        src_len = len(x_data[0])
-        batch_size = len(x_data)
-        hidden_size = self._hidden
-        f  = self._activation
-        is_train = train_ref is not None
-
-        # Calculate alignment weights
-        s, h = self.s, self.h
-
-        a = F.exp(f(F.reshape(F.batch_matmul(h, s, transa=True), (batch_size, src_len, 1))))
-        a = F.reshape(F.batch_matmul(a, 1/F.sum(a, axis=1)), (batch_size, src_len))
-
-        # Calculate context vector
-        c = F.reshape(F.batch_matmul(s, a), (batch_size, hidden_size))
-        ht = self.WC(F.concat((self.h, c), axis=1))
-        yp = self.WS(ht)
+        # Calculate the score of all target word (not yet softmax)
+        yp = self.decoder(self.s, a, self.h)
         
+        # To adjust brevity score during decoding
+        if train_ref is None and eos_disc != 0.0:
+            yp = self._adjust_brevity(yp, eos_disc)
+
         # Enhance y
         y = self._additional_score(yp, a, x_data)
-
-        # Calculate next hidden hidden state
-        if update:
-            if train_ref is not None:
-                # Training
-                wt = train_ref
-            else:
-                # Testing
-                wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
-            w_n = self.OE(wt)
-            w_nf = f(self.EF(w_n, is_train))
-            w_nb = f(self.EB(w_n, is_train))
-            self.h = self.AE(w_nf) + w_nb
+        
+        # Conceive the next state
+        self.h = self._decode_next(y, train_ref=train_ref, is_train=is_train)
         return DecodingOutput(y, a)
 
+    # Adjusting brevity during decoding
+    def _adjust_brevity(self, yp, eos_disc):
+        v = self._xp.ones(len(self._trg_voc), dtype=np.float32)
+        v[self._trg_voc.eos_id()] = 1-eos_disc
+        v  = F.broadcast_to(Variable(v), yp.data.shape)
+        return yp * v
+
+    # Update the RNN state 
+    def _decode_next(self, y, train_ref, is_train=False):
+        if train_ref is not None and is_train:
+            # Training
+            wt = train_ref
+        else:
+            # Testing
+            wt = Variable(self._xp.array(UF.argmax(y.data), dtype=np.int32))
+        return self.decoder.update(wt, is_train=is_train)
+
+    # Whether we want to change y score by linguistic resources?
     def _additional_score(self, y, a, x_data):
         return y
+
+class Encoder(ChainList):
+    def __init__(self, I, E, H, depth):
+        self.IE = L.EmbedID(I, E)
+        self.EF = StackLSTM(E, H, depth)
+        self.EB = StackLSTM(E, H, depth)
+        self.AE = L.Linear(2*H, H)
+        self.H  = H
+        super(Encoder, self).__init__(self.IE, self.EF, self.EB, self.AE)
+
+    def __call__(self, src, is_train=False, xp=np):
+        # Some namings
+        B  = len(src)      # Batch Size
+        N  = len(src[0])   # length of source
+        H  = self.H
+        src_col = lambda x: Variable(self.xp.array([src[i][x] for i in range(B)], dtype=np.int32))
+        embed   = lambda e, x: e(self.IE(x), is_train=is_train)
+        bi_rnn  = lambda x, y: self.AE(F.concat((x[0], y[1]), axis=1))
+        concat_source = lambda S, s: s if S is None else F.concat((S, s), axis=2)
+        # State Reset
+        self.EF.reset_state()
+        self.EB.reset_state()
+       
+        # Forward + backward encoding
+        s = []
+        for j in range(N):
+            s.append((
+                embed(self.EF, src_col(j)),
+                embed(self.EB, src_col(-j-1))
+            ))
+        
+        # Joining the encoding data together
+        S = None
+        for j in range(N):
+            s_j = bi_rnn(s[j], s[-j-1])
+            S = concat_source(S, F.reshape(s_j, (B, H, 1)))
+        S = F.swapaxes(S, 1, 2)
+        return S, s_j
+
+class AttentionLayer(ChainList):
+    def __init__(self):
+        super(AttentionLayer, self).__init__()
+    
+    def __call__(self, h, s):
+        return self._dot(h, s)
+
+    def _dot(self, h, s):
+        return F.softmax(F.batch_matmul(s, h))
+
+class Decoder(ChainList):
+    def __init__(self, O, E, H, depth):
+        self.DF = StackLSTM(E, H, depth)
+        self.WS = L.Linear(H, O)
+        self.WC = L.Linear(2*H, H)
+        self.OE = L.EmbedID(O, E)
+        self.HE = L.Linear(H, E)
+        super(Decoder, self).__init__(self.DF, self.WS, self.WC, self.OE, self.HE)
+    
+    def __call__(self, s, a, h):
+        B = len(s.data)
+        H = len(h.data[0])
+        c = F.reshape(F.batch_matmul(a, s, transa=True), (B, H))
+        ht = F.tanh(self.WC(F.concat((h, c), axis=1)))
+        return self.WS(ht)
+
+    # Conceive the first state of decoder based on the last state of encoder
+    def reset(self, s, is_train=False):
+        self.DF.reset_state()
+        return self.DF(self.HE(s), is_train=is_train)
+
+    def update(self, wt, is_train=False):
+        return self.DF(self.OE(wt), is_train=is_train)
 

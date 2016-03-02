@@ -3,7 +3,8 @@ import numpy as np
 
 from chainer import optimizers, Variable
 
-from chainn.util import Vocabulary, ModelFile, load_nmt_train_data
+from chainn.util import Vocabulary
+from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
 from chainn.test import TestCase
 from chainn.model.nmt import Attentional
 
@@ -11,17 +12,17 @@ class Args:
     def __init__(self, X, Y):
         self.input = len(X)
         self.output = len(Y)
-        self.hidden = 5
-        self.embed = 5
-        self.depth = 5
+        self.hidden = 3
+        self.embed = 1
+        self.depth = 2
 
 class TestEfAttn(TestCase):
     def setUp(self):
-        src=["I am Philip", "I am a student"]
-        trg=["私 は フィリップ です", "私 は 学生 です"]
-        SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=0, batch_size=len(src))
+        src=["I am Philip .", "I am a student ."]
+        trg=["私 は フィリップ です .", "私 は 学生 です ."]
+        SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=0)
         self.model = Attentional(SRC, TRG, Args(SRC,TRG))
-        self.data = data
+        self.data = batch_generator(data, (SRC, TRG), 1)
 
     def test_efattn_encode(self):
         model = self.model

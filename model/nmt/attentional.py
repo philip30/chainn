@@ -45,7 +45,7 @@ class Attentional(ChainnBasicModel):
         return ret
 
     # Reset the state of decoder by encoding source sent
-    def reset_state(self, x_data, y_data):
+    def reset_state(self, x_data, y_data, is_train):
         xp, hidden   = self._xp, self._hidden
         IE, EHF, HHF = self[0:3]
         EHB, HHB     = self[3:5]
@@ -90,7 +90,7 @@ class Attentional(ChainnBasicModel):
         self.h = c, s, UaH, h, y_p
         return self.h
 
-    def __call__ (self, x_data, train_ref=None, update=True):
+    def __call__ (self, x_data, train_ref=None, is_train=True, update=True):
         f, xp      = self._activation, self._xp
         batch_size = len(x_data)
         hidden     = self._hidden

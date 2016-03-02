@@ -12,7 +12,7 @@ from chainer import Chain, optimizers, Variable
 
 from chainn import functions as UF
 from chainn.model import ParallelTextClassifier
-from chainn.util import ModelFile, load_lm_data
+from chainn.util.io import load_lm_data, batch_generator, ModelFile
 
 def parse_args():
     parser = argparse.ArgumentParser("Program for POS-Tagging classification using RNN/LSTM-RNN")
@@ -41,13 +41,17 @@ def main():
     
     # Variable
     epoch_total = args.epoch
+    dev_data = None
 
     # data
     UF.trace("Loading corpus + dictionary")
-    X, train_data = load_lm_data(sys.stdin, batch_size=args.batch)
+    X, train_data = load_lm_data(sys.stdin)
     if args.dev:
         with open(args.dev) as dev_fp:
-            X, dev_data = load_lm_data(dev_fp, X, batch_size=args.batch)
+            _, dev_data = load_lm_data(dev_fp, X)
+
+    training_data = lambda: batch_generator(train_data, (X, X), batch_size=args.batch)
+    development_data = lambda: batch_generator(dev_data, (X, X), batch_size=args.batch)
 
     # Setup model
     UF.trace("Setting up classifier")
@@ -63,7 +67,7 @@ def main():
     for ep in range(epoch_total):
         UF.trace("Epoch %d" % (ep+1))
         epoch_loss = 0
-        for x_data, y_data in train_data:
+        for x_data, y_data in training_data():
             accum_loss, accum_acc, output = model.train(x_data, y_data)
             epoch_loss += float(accum_loss)
         epoch_loss /= len(train_data)
@@ -73,7 +77,7 @@ def main():
         # Evaluate on Dev Set
         if args.dev:
             dev_loss = 0
-            for x_data, y_data in dev_data:
+            for x_data, y_data in development_data():
                 accum_loss, _, _ = model.train(x_data, y_data, update=False)
                 dev_loss   += float(accum_loss)
             dev_loss /= len(dev_data)

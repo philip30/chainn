@@ -11,7 +11,7 @@ from chainer import Chain, optimizers, Variable
 
 from chainn import functions as UF
 from chainn.model import ParallelTextClassifier
-from chainn.util import ModelFile, load_pos_train_data
+from chainn.util.io import ModelFile, load_pos_train_data, batch_generator
 
 def parse_args():
     parser = argparse.ArgumentParser("train-pos")
@@ -42,7 +42,8 @@ def main():
 
     # data
     UF.trace("Loading corpus + dictionary")
-    X, Y, data = load_pos_train_data(sys.stdin.readlines(), batch_size=args.batch)
+    X, Y, data = load_pos_train_data(sys.stdin.readlines())
+    training_data = lambda: batch_generator(data, (X, Y), batch_size=args.batch)
 
     # Setup model
     UF.trace("Setting up classifier")
@@ -59,7 +60,7 @@ def main():
         UF.trace("Epoch %d" % (ep+1))
         epoch_loss = 0
         epoch_acc  = 0
-        for x_data, y_data in data:
+        for x_data, y_data in training_data():
             accum_loss, accum_acc, output = model.train(x_data, y_data)
             if args.verbose:
                 for src, pos, ref in zip(x_data, output, y_data):

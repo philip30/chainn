@@ -8,7 +8,7 @@ import math
 from collections import defaultdict
 from chainn import functions as UF
 from chainn.model import ParallelTextClassifier
-from chainn.util import load_lm_data
+from chainn.util.io import load_lm_data, batch_generator
 
 def parse_args():
     parser = argparse.ArgumentParser("Program for multi-class classification using multi layered perceptron")
@@ -31,13 +31,13 @@ def main():
 
     # data
     UF.trace("Loading test data + dictionary from stdin")
-    _, data = load_lm_data(sys.stdin, X, batch_size=args.batch)
+    _, data = load_lm_data(sys.stdin, X)
        
     # Calculating PPL
     gen_fp = open(args.gen, "w") if args.gen else None
     UF.trace("Start Calculating PPL")
     corpus_loss = 0
-    for x_data, y_data in data:
+    for x_data, y_data in batch_generator(data, (X,), batch_size=args.batch):
         accum_loss, _, output = model.train(x_data, y_data, update=False)
         
         accum_loss = accum_loss / len(x_data)

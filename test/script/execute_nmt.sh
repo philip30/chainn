@@ -14,5 +14,5 @@ other=$7
 
 mkdir -p $test_dir
 
-python3 $train --debug --hidden 5 --embed 5 --model_out $test_dir/tmp.model --epoch 2 --model $model --src $src --trg $trg $other --verbose
-python3 $test --init_model $test_dir/tmp.model --use_cpu --verbose < $tst
+python3 $train --debug --hidden 5 --embed 5 --model_out $test_dir/tmp.model --epoch 3 --model $model --src $src --trg $trg $other --unk_cut 0 --seed 20
+python3 $test --init_model $test_dir/tmp.model --use_cpu < $tst

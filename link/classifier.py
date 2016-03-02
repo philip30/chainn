@@ -10,8 +10,8 @@ class Classifier(links.Classifier):
         return self.loss
 
 class NMTClassifier(links.Classifier):
-    def __call__(self, x=None, t=None, update=True):
-        self.output = self.predictor(x, t, update)
+    def __call__(self, x=None, t=None, *args, **kwargs):
+        self.output = self.predictor(x, t, *args, **kwargs)
         self.y = self.output.y
         if t is not None:
             self.loss = self.lossfun(self.y, t)

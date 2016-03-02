@@ -1,4 +1,3 @@
-
 from collections import defaultdict
 from chainn.util import Vocabulary
 
@@ -7,60 +6,53 @@ from chainn.util import functions as UF
 def strip_split(line):
     return line.strip().split()
 
-def unsorted_batch(x_batch, SRC):
-    max_len = max(len(x) for x in x_batch)
-    for i in range(len(x_batch)):
-        x_batch[i] += [SRC.eos_id() for _ in range(max_len-len(x_batch[i]))]
-    return x_batch
+def unsorted_batch(batches, dicts):
+    for x_batch, dct in zip(batches, dicts):
+        max_len = max(len(x) for x in x_batch)
+        for i in range(len(x_batch)):
+            x_batch[i] += [dct.eos_id() for _ in range(max_len-len(x_batch[i]))]
+    return batches
 
-def load_train_data(data, SRC, TRG, batch_size=1, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False):
+def load_train_data(data, SRC, TRG, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False, debug=False):
     rep_rare = lambda vocab, w, count, cut: vocab[w] if count is None or count[w] > cut else vocab.unk_id()
     rep_unk  = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
     convert_to_id = lambda vocab, w, count, cut: rep_unk(vocab, w) if replace_unknown else rep_rare(vocab, w, count, cut)
 
-    item_count = 0
-    ret = []
-    x_batch, y_batch = [], []
     holder = []
     for src, trg in data:
         src = [convert_to_id(SRC, word, src_count, x_cut) for word in src]
         trg = [convert_to_id(TRG, word, trg_count, y_cut) for word in trg]
         holder.append((src, trg))
+    return holder
 
-    for src, trg in sorted(holder, key=lambda x: len(x[0])):
-        x_batch.append(src), y_batch.append(trg)
-        item_count += 1
-
-        if item_count % batch_size == 0:
-            ret.append((unsorted_batch(x_batch, SRC), unsorted_batch(y_batch, TRG)))
-            x_batch, y_batch = [], []
-    if len(x_batch) != 0:
-        ret.append((unsorted_batch(x_batch, SRC), unsorted_batch(y_batch, TRG)))
-    UF.trace("SRC size:", len(SRC))
-    UF.trace("TRG size:", len(TRG))
-    return ret
-
-def load_test_data(lines, SRC, batch_size=1, preprocessing=strip_split):
-    rep_rare = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
-    
+def batch(data, dicts, batch_size=1):
+    new_batch = lambda: [[] for _ in range(len(data[0]))]
+    batch_list = new_batch()
     item_count = 0
-    x_batch    = []
-    for src in lines:
-        src = [rep_rare(SRC, word) for word in preprocessing(src)]
-        x_batch.append(src)
+    #for src, trg in sorted(holder, key=lambda x: len(x[0]), reverse=debug):
+    for item in data:
+        for i in range(len(item)):
+            batch_list[i].append(item[i])
         item_count += 1
 
         if item_count % batch_size == 0:
-            yield unsorted_batch(x_batch, SRC)
-            x_batch = []
-    
-    if len(x_batch) != 0:
-        yield unsorted_batch(x_batch, SRC)
+            yield unsorted_batch(batch_list, dicts)
+            batch_list = new_batch()
+    if len(batch_list[0]) != 0:
+        yield unsorted_batch(batch_list, dicts)
 
+def load_test_data(lines, SRC, preprocessing=strip_split):
+    rep_rare = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
+    holder     = []
+    for i, src in enumerate(lines):
+        src = [rep_rare(SRC, word) for word in preprocessing(src)]
+        holder.append((src, i))
+    return holder
+    
 """
 * POS TAGGER *
 """
-def load_pos_train_data(lines, batch_size=1, cut_threshold=1):
+def load_pos_train_data(lines, cut_threshold=1):
     SRC, TRG = Vocabulary(unk=True, eos=True), Vocabulary(unk=False, eos=True)
     data     = []
     w_count  = defaultdict(lambda: 0)
@@ -77,22 +69,26 @@ def load_pos_train_data(lines, batch_size=1, cut_threshold=1):
         data.append((words,labels))
 
     # Data generator
-    data_generator = load_train_data(data, SRC, TRG, batch_size, src_count=w_count, x_cut=cut_threshold)
+    data = load_train_data(data, SRC, TRG, \
+            src_count=w_count, x_cut=cut_threshold)
     
     # Return
-    return SRC, TRG, data_generator
+    return SRC, TRG, data
 
-def load_pos_test_data(lines, SRC, batch_size=1):
-    return load_test_data(lines, SRC, batch_size)
+def load_pos_test_data(lines, SRC):
+    return load_test_data(lines, SRC)
 
 """
 * NMT *
 """
-def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
+def load_nmt_train_data(src, trg, SRC=None, TRG=None, cut_threshold=1, debug=False):
     src_count = defaultdict(lambda:0)
     trg_count = defaultdict(lambda:0)
-    SRC  = Vocabulary(unk=True, eos=True)
-    TRG  = Vocabulary(unk=True, eos=True)
+    rep_unk   = SRC is not None and TRG is not None
+    if SRC is None:
+        SRC  = Vocabulary(unk=True, eos=True)
+    if TRG is None:
+        TRG  = Vocabulary(unk=True, eos=True)
     data = []
     # Reading in data
     for sent_id, (src_line, trg_line) in enumerate(zip(src, trg)):
@@ -107,22 +103,24 @@ def load_nmt_train_data(src, trg, batch_size=1, cut_threshold=1):
         data.append((src_line, trg_line))
    
     # Data generator
-    data_generator = load_train_data(data, SRC, TRG, batch_size, \
-            src_count=src_count, trg_count=trg_count, x_cut=cut_threshold, y_cut=cut_threshold)
+    data = load_train_data(data, SRC, TRG, \
+            src_count=src_count, trg_count=trg_count, \
+            x_cut=cut_threshold, y_cut=cut_threshold, \
+            debug=debug, replace_unknown=rep_unk)
     
     # Return
-    return SRC, TRG, data_generator
+    return SRC, TRG, data
     
-def load_nmt_test_data(src, SRC, batch_size=1):
+def load_nmt_test_data(src, SRC):
     def preprocessing(line):
         return line.strip().split() + [SRC.eos()]
     
-    return load_test_data(src, SRC, batch_size, preprocessing)
+    return load_test_data(src, SRC, preprocessing)
 
 """
 * LANGUAGE MODEL *
 """
-def load_lm_data(lines, SRC=None, batch_size=1, cut_threshold=1):
+def load_lm_data(lines, SRC=None, cut_threshold=1):
     replace_unk = SRC is not None
     if SRC is None:
         SRC = Vocabulary()
@@ -142,9 +140,9 @@ def load_lm_data(lines, SRC=None, batch_size=1, cut_threshold=1):
         data.append((words, next_w))
 
     # Data generator
-    data_generator = load_train_data(data, SRC, SRC, batch_size, \
+    data = load_train_data(data, SRC, SRC, \
             src_count=count, trg_count=count, x_cut=cut_threshold, y_cut=cut_threshold,\
             replace_unknown=replace_unk)
 
-    return SRC, data_generator
+    return SRC, data
 

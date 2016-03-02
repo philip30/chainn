@@ -4,7 +4,8 @@ from os import path
 from subprocess import check_call
 
 from chainn.test import TestCase
-from chainn.util import load_pos_train_data, load_pos_test_data, Vocabulary
+from chainn.util import Vocabulary
+from chainn.util.io import load_pos_train_data, load_pos_test_data
 
 class TestPOS(TestCase):
 
@@ -27,13 +28,13 @@ class TestPOS(TestCase):
         
         # Check data
         word_exp = [\
-                [[x_exp["I"], x_exp["am"], x_exp.unk_id()]],\
-                [[x_exp["I"], x_exp["am"], x_exp.unk_id()]]\
+                [x_exp["I"], x_exp["am"], x_exp.unk_id()],\
+                [x_exp["I"], x_exp["am"], x_exp.unk_id()]\
         ]
 
         label_exp = [\
-                [[y_exp["NNP"], y_exp["VBZ"], y_exp["NNP"]]],\
-                [[y_exp["NNP"], y_exp["VBZ"], y_exp["NN"]]]\
+                [y_exp["NNP"], y_exp["VBZ"], y_exp["NNP"]],\
+                [y_exp["NNP"], y_exp["VBZ"], y_exp["NN"]]\
         ]
 
         data_exp = [(x,y) for x, y in zip(word_exp, label_exp)]
@@ -45,10 +46,10 @@ class TestPOS(TestCase):
         X = Vocabulary()
         X["I"], X["live"], X["in"]
 
-        data = list(load_pos_test_data(test, X))
+        data = list(load_pos_test_data(test, X))[0][0]
 
         data_exp = [\
-                [[X["I"], X["live"], X["in"], X.unk_id()]]\
+                X["I"], X["live"], X["in"], X.unk_id()\
         ]
         self.assertEqual(data, data_exp)
 

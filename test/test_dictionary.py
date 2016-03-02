@@ -2,7 +2,7 @@ import unittest
 import tempfile
 
 from chainn import Vocabulary
-from chainn.util import ModelFile
+from chainn.util.io import ModelFile
 from chainn.test import TestCase
 
 class TestDictionary(TestCase):

@@ -3,7 +3,8 @@ import numpy as np
 
 from chainer import optimizers
 
-from chainn.util import Vocabulary, ModelFile
+from chainn.util import Vocabulary
+from chainn.util.io import ModelFile
 from chainn.test import TestCase
 from chainn.model import ParallelTextClassifier
 

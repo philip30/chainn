@@ -4,7 +4,8 @@ import numpy as np
 
 from chainer import optimizers, Variable, cuda
 
-from chainn.util import Vocabulary, ModelFile, load_nmt_train_data
+from chainn.util import Vocabulary
+from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
 from chainn.test import TestCase
 from chainn.model import EncDecNMT
 from chainn.model.nmt import DictAttentional
@@ -28,14 +29,15 @@ class TestDictAttn(TestCase):
     def setUp(self):
         src=["I am Philip", "I am a student"]
         trg=["私 は フィリップ です", "私 は 学生 です"]
-        SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=0, batch_size=len(src))
+        SRC, TRG, data = load_nmt_train_data(src, trg, cut_threshold=0)
         self.model = DictAttentional(SRC, TRG, Args(SRC,TRG))
         self.data = data
+        self.SRC = SRC
+        self.TRG = TRG
 
     def test_dictattn_call(self):
         model = self.model
-
-        for src, trg in self.data:
+        for src, trg in batch_generator(self.data, (self.SRC, self.TRG)):
             model.reset_state(src, trg)
             for j in range(len(trg[0])):
                 trg_j = Variable(np.array([trg[i][j] for i in range(len(trg))], dtype=np.int32))

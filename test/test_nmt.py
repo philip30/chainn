@@ -4,7 +4,8 @@ from os import path
 from subprocess import check_call
 from chainer import optimizers
 from chainn.test import TestCase
-from chainn.util import load_nmt_train_data, Vocabulary, ModelFile
+from chainn.util import Vocabulary
+from chainn.util.io import load_nmt_train_data, ModelFile
 from chainn.model import EncDecNMT
 
 class Args(object):
@@ -47,13 +48,13 @@ class TestNMT(TestCase):
         for w in "私 は です".split():
             y_exp[w]
         x_data_exp = [\
-                [[x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp.eos_id()]], \
-                [[x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp.unk_id(), x_exp.eos_id()]] \
+                [x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp.eos_id()], \
+                [x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp.unk_id(), x_exp.eos_id()] \
         ]
 
         y_data_exp = [\
-                [[y_exp["私" ], y_exp["は" ], y_exp.unk_id(), y_exp["です"], y_exp.eos_id()]], \
-                [[y_exp["私" ], y_exp["は" ], y_exp.unk_id(), y_exp["です"], y_exp.eos_id()]] \
+                [y_exp["私" ], y_exp["は" ], y_exp.unk_id(), y_exp["です"], y_exp.eos_id()], \
+                [y_exp["私" ], y_exp["は" ], y_exp.unk_id(), y_exp["です"], y_exp.eos_id()] \
         ]
 
         data_exp = list(zip(x_data_exp, y_data_exp))

@@ -6,21 +6,25 @@ from chainer import cuda
 
 from chainn import functions as UF
 from chainn.link import Classifier
-from chainn.util import ModelFile
+from chainn.util.io import ModelFile
+
+def setup_gpu(use_gpu):
+    ret = None
+    if not hasattr(cuda, "cupy"):
+        use_gpu  = -1
+        ret = np
+    else:
+        if use_gpu >= 0:
+            ret = cuda.cupy
+            cuda.get_device(use_gpu).use()
+        else:
+            ret = np
+    return ret, use_gpu
 
 class ChainnClassifier(object):
     def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=-1, collect_output=False, activation=F.tanh):
         self._opt            = optimizer
-        if not hasattr(cuda, "cupy"):
-            use_gpu  = -1
-            self._xp = np
-        else:
-            if use_gpu >= 0:
-                self._xp = cuda.cupy
-                cuda.get_device(use_gpu).use()
-            else:
-                self._xp = np
-        
+        self._xp, use_gpu    = setup_gpu(use_gpu)
         self._model          = self._load_classifier()(self._load_model(args, X, Y, activation))
         self._collect_output = collect_output
         self._src_voc        = X if not args.init_model else self._model.predictor._src_voc
@@ -38,13 +42,15 @@ class ChainnClassifier(object):
         self._model.predictor.save(fp, self._gpu_id)
 
     def train(self, x_data, y_data, update=True, *args, **kwargs):
-        self._model.zerograds()
-        accum_loss, accum_acc, output = self(x_data, y_data, *args, **kwargs)
+        accum_loss, accum_acc, output = self(x_data, y_data, is_train=update, *args, **kwargs)
         if update and not math.isnan(float(accum_loss.data)):
+            self._model.zerograds()
             accum_loss.backward()
-            #accum_loss.unchain_backward()
             self._opt.update()
         return accum_loss.data, accum_acc.data, output
+
+    def decode(self, x_data, *args, **kwargs):
+        return self(x_data, is_train=False, *args, **kwargs) 
 
     def get_vocabularies(self):
         return self._src_voc, self._trg_voc
