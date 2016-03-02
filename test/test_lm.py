@@ -3,7 +3,8 @@ from os import path
 from subprocess import check_call
 
 from chainn.test import TestCase
-from chainn.util import load_lm_data, Vocabulary
+from chainn.util import Vocabulary
+from chainn.util.io import load_lm_data
 
 class TestLM(TestCase):
     def setUp(self):
@@ -19,13 +20,13 @@ class TestLM(TestCase):
             x_exp[w]
 
         word_exp = [\
-                [[x_exp["<s>"], x_exp["i"], x_exp["am"], x_exp.unk_id()]], \
-                [[x_exp["<s>"], x_exp["i"], x_exp["am"], x_exp.unk_id()]] \
+                [x_exp["<s>"], x_exp["i"], x_exp["am"], x_exp.unk_id()], \
+                [x_exp["<s>"], x_exp["i"], x_exp["am"], x_exp.unk_id()] \
         ]
 
         next_word_exp = [\
-                [[x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp["</s>"]]], \
-                [[x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp["</s>"]]] \
+                [x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp["</s>"]], \
+                [x_exp["i"], x_exp["am"], x_exp.unk_id(), x_exp["</s>"]] \
         ]
 
         data_exp = list(zip(word_exp, next_word_exp))

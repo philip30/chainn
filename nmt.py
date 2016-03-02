@@ -7,7 +7,8 @@ from chainn import functions as UF
 from chainn import output
 
 from chainn.model import EncDecNMT
-from chainn.util import load_nmt_test_data, AlignmentVisualizer
+from chainn.util import AlignmentVisualizer
+from chainn.util.io import load_nmt_test_data, batch_generator
 
 # default parameter
 def parse_args():
@@ -36,7 +37,7 @@ def main():
     # Loading model
     UF.trace("Setting up classifier")
     model = EncDecNMT(args, use_gpu=args.gpu, collect_output=True)
-    SRC, TRG  = model.get_vocabularies()
+    SRC, TRG = model.get_vocabularies()
 
     decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc}
     # Decoding
@@ -44,12 +45,12 @@ def main():
         # Batched decoding
         UF.trace("Loading test data...")
         with open(args.src) as src_fp:
-            data, ids = load_nmt_test_data(src_fp, SRC, batch_size=args.batch)
+            data = load_nmt_test_data(src_fp, SRC)
             ctr  = 0
             UF.trace("Decoding started.")
 
             output = {}
-            for src, src_id in zip(data, ids):
+            for src, src_id in batch_generator(data, (SRC,), batch_size=args.batch):
                 trg = model.decode(src, **decoding_options)
                
                 for trg_i, id_i in zip(trg.y, src_id):
@@ -68,12 +69,13 @@ def main():
         UF.trace("src is not specified, reading src from stdin.")
         # Line by line decoding
         for i, line in enumerate(sys.stdin):
-            line, _ = list(load_nmt_test_data([line.strip()], SRC))
-            trg = model.decode(line[0], **decoding_options)
+            line = [x for x in batch_generator(load_nmt_test_data([line.strip()], SRC), (SRC,), 1)]
+            src = line[0][0]
+            trg = model.decode(src, **decoding_options)
             if args.verbose:
-                print_result(i, trg, TRG, line[0], SRC, sys.stderr)
+                print_result(i, trg, TRG, src, SRC, sys.stderr)
             if ao_fp is not None:
-                AlignmentVisualizer.print(trg.a, i, line[0], trg.y, SRC, TRG, fp=ao_fp)
+                AlignmentVisualizer.print(trg.a, i, src, trg.y, SRC, TRG, fp=ao_fp)
             print(TRG.str_rpr(trg.y[0]))
     
     if ao_fp is not None:

@@ -9,7 +9,8 @@ import chainer.functions as F
 import chainn.util.functions as UF
 from chainn.model import ChainnClassifier
 from chainn.model.nmt import EncoderDecoder, Attentional, DictAttentional
-from chainn.util import ModelFile, DecodingOutput
+from chainn.util import DecodingOutput
+from chainn.util.io import ModelFile
 from chainn.link import NMTClassifier
 
 # Length of truncated BPTT

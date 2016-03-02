@@ -6,7 +6,7 @@ from chainer import Variable
 from chainn import functions as UF
 from chainn.model import ChainnClassifier
 from chainn.model.basic import RNN, LSTMRNN
-from chainn.util import ModelFile
+from chainn.util.io import ModelFile
 
 class ParallelTextClassifier(ChainnClassifier):
     

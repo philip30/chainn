@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
 import numpy as np
-import sys, argparse, math, gc, chainer
+import sys, argparse, math, gc, chainer, random
 import chainer.functions as F
 import chainn.util.functions as UF
 
 from collections import defaultdict
-from chainn.util import Vocabulary as Vocab, load_nmt_train_data, ModelFile, AlignmentVisualizer
-from chainn.model import EncDecNMT
 from chainer import cuda, optimizer, optimizers
+
+from chainn.util import Vocabulary as Vocab, AlignmentVisualizer
+from chainn.util.io import ModelFile, batch_generator, load_nmt_train_data
+from chainn.model import EncDecNMT
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -45,6 +47,7 @@ def init_seed(seed):
         np.random.seed(seed)
         if hasattr(cuda, "cupy"):
             cuda.cupy.random.seed(seed)
+        random.seed(seed)
 
 def main():
     # Preparation
@@ -57,10 +60,11 @@ def main():
     UF.trace("Loading corpus + dictionary")
     with open(args.src) as src_fp:
         with open(args.trg) as trg_fp:
-            SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
+            SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, cut_threshold=args.unk_cut, debug=args.debug)
             UF.trace("SRC size:", len(SRC))
             UF.trace("TRG size:", len(TRG))
-    
+    training_data = lambda: batch_generator(data, (SRC, TRG), batch_size=args.batch)
+
 #    if args.dev and args.dev_ref:
 #        with open(args.dev) as src_fp:
 #            with open(args.dev) as trg_fp:
@@ -84,7 +88,7 @@ def main():
         epoch_accuracy = 0
         # Training from the corpus
         UF.trace("Starting Epoch", epoch+1)
-        for src, trg in data:
+        for src, trg in training_data():
             accum_loss, accum_acc, output = model.train(src, trg)
             epoch_loss += accum_loss
             epoch_accuracy += accum_acc
@@ -94,6 +98,7 @@ def main():
             trained += len(src)
             UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])-1)) # minus the </s>
             model.report()
+        random.shuffle(data)
         epoch_loss /= len(data)
         epoch_accuracy /= len(data)
         

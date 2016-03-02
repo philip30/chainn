@@ -6,7 +6,7 @@ from chainer import cuda
 
 from chainn import functions as UF
 from chainn.link import Classifier
-from chainn.util import ModelFile
+from chainn.util.io import ModelFile
 
 def setup_gpu(use_gpu):
     ret = None

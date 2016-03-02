@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 from chainn.model.basic import RNN
-from chainn.util import ModelFile, Vocabulary
+from chainn.util import Vocabulary
+from chainn.util.io import ModelFile
 from chainn.test import TestCase
 
 class Args(object):
