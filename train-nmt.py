@@ -18,21 +18,22 @@ parser.add_argument("--src", type=str, required=True)
 parser.add_argument("--trg", type=str, required=True)
 parser.add_argument("--model_out", type=str, required=True)
 # Options
-parser.add_argument("--hidden", type=positive, default=128)
-parser.add_argument("--embed", type=positive, default=128)
-parser.add_argument("--batch", type=positive, default=512)
-parser.add_argument("--epoch", type=positive, default=100)
-parser.add_argument("--depth", type=positive, default=1)
-parser.add_argument("--save_len", type=positive_decimal, default=1)
-parser.add_argument("--verbose", action="store_true")
-parser.add_argument("--use_cpu", action="store_true")
-parser.add_argument("--gpu", type=int, default=-1)
-parser.add_argument("--init_model", type=str)
-parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn")
-parser.add_argument("--unk_cut", type=int, default=1)
-parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--hidden", type=positive, default=128, help="Size of hidden layer.")
+parser.add_argument("--embed", type=positive, default=128, help="Size of embedding vector.")
+parser.add_argument("--batch", type=positive, default=512, help="Number of (src) words in batch.")
+parser.add_argument("--epoch", type=positive, default=10, help="Number of epoch to train the model.")
+parser.add_argument("--depth", type=positive, default=1, help="Depth of the network.")
+parser.add_argument("--save_len", type=positive, default=1, help="Number of iteration being done for ")
+parser.add_argument("--verbose", action="store_true", help="To output the training progress for every sentence in corpora.")
+parser.add_argument("--use_cpu", action="store_true", help="Force to use CPU.")
+parser.add_argument("--save_models", action="store_true", help="Save models for every iteration with auto enumeration.")
+parser.add_argument("--gpu", type=int, default=-1, help="Specify GPU to be used, negative for using CPU.")
+parser.add_argument("--init_model", type=str, help="Init the training weights with saved model.")
+parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn", help="Type of model being trained.")
+parser.add_argument("--unk_cut", type=positive, default=1, help="Threshold for words in corpora to be treated as unknown.")
+parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
 # DictAttn
-parser.add_argument("--dict",type=str)
+parser.add_argument("--dict",type=str, help="Tab separated trg give src dictionary")
 args = parser.parse_args()
 
 """ Sanity Check """
@@ -45,6 +46,9 @@ else:
 
 if args.use_cpu:
     args.gpu = -1
+
+if args.save_models:
+    args.save_len = 1
 
 """ Training """
 trainer   = ParallelTrainer(args.seed)
@@ -77,9 +81,12 @@ def onBatchUpdate(output, src, trg, trained, epoch, accum_loss):
         report(output, src, trg, trained, epoch)
     UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])-1)) # minus the last </s>
 
-def save_model():
-    UF.trace("saving model to " + args.model_out + "...")
-    with ModelFile(open(args.model_out, "w")) as model_out:
+def save_model(epoch):
+    out_file = args.model_out
+    if args.save_models:
+        out_file += "-" + str(epoch)
+    UF.trace("saving model to " + out_file + "...")
+    with ModelFile(open(out_file, "w")) as model_out:
         model.save(model_out)
 
 def onEpochUpdate(epoch_loss, epoch_accuracy, prev_loss, epoch):
@@ -89,11 +96,11 @@ def onEpochUpdate(epoch_loss, epoch_accuracy, prev_loss, epoch):
 
     # saving model
     if (epoch + 1) % args.save_len == 0:
-        save_model()        
+        save_model(epoch)        
 
 def onTrainingFinish(epoch):
     if epoch % args.save_len != 0:
-        save_model()
+        save_model(epoch)
     UF.trace("training complete!")
 
 # Execute Training loop
