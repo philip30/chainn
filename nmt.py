@@ -41,6 +41,7 @@ SRC, TRG = model.get_vocabularies()
 
 # Testing callbacks
 def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
+
     for i, (sent, result) in enumerate(zip(src, trg.y)):
         print(ctr + i, file=fp)
         print("SRC:", SRC.str_rpr(sent), file=fp)

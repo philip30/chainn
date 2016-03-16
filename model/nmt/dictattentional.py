@@ -34,15 +34,13 @@ class DictAttentional(Attentional):
         batch_size = len(src)
         src_len = len(src[0])
 
-        prob_dict = []
+        prob_dict = np.zeros((src_len, batch_size, vocab_size), dtype=np.float32)
         for j in range(src_len):
-            prob = [[0 for _ in range(vocab_size)] for _ in range(batch_size)]
             for i in range(batch_size):
                 src_word = SRC.tok_rpr(src[i][j])
                 if src_word in dct:
                     for trg_word, p in dct[src_word].items():
-                        prob[i][TRG[trg_word]] += p
-            prob_dict.append(prob)
+                        prob_dict[j][i][TRG[trg_word]] += p
         self.prob_dict = F.swapaxes(Variable(xp.array(prob_dict, dtype=np.float32)), 0, 1)
 
         return super(DictAttentional, self).reset_state(src, trg, *args, **kwargs) 

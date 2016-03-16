@@ -23,6 +23,7 @@ class Tester:
         # Start Decoding
         output = {}
         data   = batch_generator(data, (self._inp_vocab,), batch_size=self._batch)
+        ctr    = 0
         for src, src_id in data:
             trg = model.decode(src, **self._decoding_options)
 
@@ -38,8 +39,8 @@ class Tester:
     def single_decoding(self, data, model):
         self.onDecodingStart()
         for i, line in enumerate(data):
-            inp = list(batch_generator(self.loader([line.strip()], self._inp_vocab), (self._inp_vocab,), 1))
-            out = model.decode(inp[0][0], **self._decoding_options)
+            inp = list(batch_generator(self.loader([line.strip()], self._inp_vocab), (self._inp_vocab,), 1))[0][0]
+            out = model.decode(inp, **self._decoding_options)
 
             self.onSingleUpdate(i, inp, out)
 

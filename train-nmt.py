@@ -30,7 +30,7 @@ parser.add_argument("--save_models", action="store_true", help="Save models for 
 parser.add_argument("--gpu", type=int, default=-1, help="Specify GPU to be used, negative for using CPU.")
 parser.add_argument("--init_model", type=str, help="Init the training weights with saved model.")
 parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn", help="Type of model being trained.")
-parser.add_argument("--unk_cut", type=positive, default=1, help="Threshold for words in corpora to be treated as unknown.")
+parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words in corpora to be treated as unknown.")
 parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
 # DictAttn
 parser.add_argument("--dict",type=str, help="Tab separated trg give src dictionary")
