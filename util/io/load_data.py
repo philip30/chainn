@@ -26,18 +26,20 @@ def load_train_data(data, SRC, TRG, src_count=None, trg_count=None, x_cut=1, y_c
     return holder
 
 def batch(data, dicts, batch_size=1):
+    data = sorted(data, key=lambda x: len(x[0]), reverse=True)
     new_batch = lambda: [[] for _ in range(len(data[0]))]
     batch_list = new_batch()
-    item_count = 0
+    size = 0
     #for src, trg in sorted(holder, key=lambda x: len(x[0]), reverse=debug):
     for item in data:
         for i in range(len(item)):
             batch_list[i].append(item[i])
-        item_count += 1
+        size += len(item[0])
 
-        if item_count % batch_size == 0:
+        if size >= batch_size:
             yield unsorted_batch(batch_list, dicts)
             batch_list = new_batch()
+            size = 0
     if len(batch_list[0]) != 0:
         yield unsorted_batch(batch_list, dicts)
 
