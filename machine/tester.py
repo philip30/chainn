@@ -26,15 +26,15 @@ class Tester:
         ctr    = 0
         for src, src_id in data:
             trg = model.decode(src, **self._decoding_options)
-
+            
             # Collecting output
-            for trg_i, id_i in zip(trg.y, src_id):
-                output[id_i] = trg_i
+            for src_i, trg_i, id_i in zip(src, trg, src_id):
+                output[id_i] = src_i, trg_i
            
             self.onBatchUpdate(ctr, src, trg)
             ctr += len(src)
         
-        self.onDecodingFinish(output)
+        self.onDecodingFinish(data, output)
         
     def single_decoding(self, data, model):
         self.onDecodingStart()

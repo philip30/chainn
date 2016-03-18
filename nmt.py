@@ -22,7 +22,7 @@ parser.add_argument("--gen_limit", type=positive, default=50)
 parser.add_argument("--use_cpu", action="store_true")
 parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu).")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument("--alignment_out", type=str)
+parser.add_argument("--align_out", type=str)
 parser.add_argument("--eos_disc", type=float, default=0.0, help="Give fraction positive discount to output longer sentence.")
 args  = parser.parse_args()
 
@@ -31,7 +31,7 @@ if args.use_cpu:
     args.gpu = -1
 
 """ Begin Testing """
-ao_fp = UF.load_stream(args.alignment_out)
+ao_fp = UF.load_stream(args.align_out)
 decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc}
 
 # Loading model
@@ -41,31 +41,31 @@ SRC, TRG = model.get_vocabularies()
 
 # Testing callbacks
 def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
-
     for i, (sent, result) in enumerate(zip(src, trg.y)):
         print(ctr + i, file=fp)
         print("SRC:", SRC.str_rpr(sent), file=fp)
         print("TRG:", TRG.str_rpr(result), file=fp)
    
-    if trg.a is not None:
-        AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp)
-
 def onDecodingStart():
     UF.trace("Decoding started.")
 
 def onBatchUpdate(ctr, src, trg):
     # Decoding
-    if ao_fp is not None:
-        AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=ao_fp)
     if args.verbose:
         print_result(ctr, trg, TRG, src, SRC, sys.stderr)
 
 def onSingleUpdate(ctr, src, trg):
-    onBatchUpdate(ctr, src, trg)
+    align_fp = ao_fp if ao_fp is not None else sys.stderr
     print(TRG.str_rpr(trg.y[0]))
+    if trg.a is not None:
+        AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=align_fp)
 
-def onDecodingFinish(output):
-    for _, out in sorted(output.items(), key=lambda x:x[0]):
+def onDecodingFinish(data, output):
+    align_fp = ao_fp if ao_fp is not None else sys.stderr
+    for src_id, (inp, out) in sorted(output.items(), key=lambda x:x[0]):
+        if type(out) == tuple:
+            out, align = out
+            AlignmentVisualizer.print([align], src_id, [inp], [out], SRC, TRG, fp=align_fp)
         print(TRG.str_rpr(out))
 
 # Execute testing
