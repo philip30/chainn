@@ -89,10 +89,9 @@ def save_model(epoch):
     with ModelFile(open(out_file, "w")) as model_out:
         model.save(model_out)
 
-def onEpochUpdate(epoch_loss, epoch_accuracy, prev_loss, epoch):
+def onEpochUpdate(epoch_loss, prev_loss, epoch):
     UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
     UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
-    UF.trace("Train Accuracy:", float(epoch_accuracy))
 
     # saving model
     if (epoch + 1) % args.save_len == 0:

@@ -34,7 +34,6 @@ class ParallelTextClassifier(ChainnClassifier):
             if y_data is not None:
                 labels = Variable(xp.array([y_data[i][j] for i in range(batch_size)], dtype=np.int32))
                 accum_loss += model(words, labels)
-                accum_acc  += model.accuracy
             
             if not y_data is not None or self._collect_output:
                 y = UF.argmax(model.y.data if y_data is not None else model.predictor(words).data)
@@ -42,9 +41,8 @@ class ParallelTextClassifier(ChainnClassifier):
                     output[i].append(y[i])
         
         if y_data is not None:
-            accum_loss = accum_loss / src_len
-            accum_acc  = accum_acc  / src_len
-            return accum_loss, accum_acc, output
+            accum_loss = accum_loss / (src_len * batch_size)
+            return accum_loss, output
         else:
             return output
 

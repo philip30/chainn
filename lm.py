@@ -38,7 +38,7 @@ def main():
     UF.trace("Start Calculating PPL")
     corpus_loss = 0
     for x_data, y_data in batch_generator(data, (X,), batch_size=args.batch):
-        accum_loss, _, output = model.train(x_data, y_data, update=False)
+        accum_loss, output = model.train(x_data, y_data, update=False)
         
         accum_loss = accum_loss / len(x_data)
         for inp, result in zip(x_data, output):

@@ -68,7 +68,7 @@ def main():
         UF.trace("Epoch %d" % (ep+1))
         epoch_loss = 0
         for x_data, y_data in training_data():
-            accum_loss, accum_acc, output = model.train(x_data, y_data)
+            accum_loss, output = model.train(x_data, y_data)
             epoch_loss += float(accum_loss)
         epoch_loss /= len(train_data)
 
@@ -78,7 +78,7 @@ def main():
         if args.dev:
             dev_loss = 0
             for x_data, y_data in development_data():
-                accum_loss, _, _ = model.train(x_data, y_data, update=False)
+                accum_loss, _ = model.train(x_data, y_data, update=False)
                 dev_loss   += float(accum_loss)
             dev_loss /= len(dev_data)
             epoch_loss = dev_loss

@@ -37,7 +37,7 @@ class EncDecNMT(ChainnClassifier):
 
         output    = [[] for _ in range(batch_size)]
         alignment = [[[] for _ in range(gen_limit)] for _ in range(batch_size)]
-        accum_loss, accum_acc = 0, 0 
+        accum_loss = 0
         bp_ctr = 0
 
         # Decoding
@@ -45,7 +45,6 @@ class EncDecNMT(ChainnClassifier):
             if y_data is not None:
                 s_t = Variable(xp.array([y_data[i][j] for i in range(len(y_data))], dtype=np.int32))
                 accum_loss += model(x_data, s_t, is_train=is_train, *args, **kwargs) # Decode one step
-                accum_acc  += model.accuracy
                 out = model.output
             else:
                 out = model(x_data, is_train=is_train, *args, **kwargs)
@@ -76,9 +75,8 @@ class EncDecNMT(ChainnClassifier):
 
         output = DecodingOutput(output, alignment)
         if y_data is not None:
-            accum_loss = accum_loss / gen_limit
-            accum_acc  = accum_acc  / gen_limit
-            return accum_loss, accum_acc, output
+            accum_loss = accum_loss / (gen_limit * batch_size)
+            return accum_loss, output
         else:
             return output
     

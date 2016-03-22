@@ -42,12 +42,12 @@ class ChainnClassifier(object):
         self._model.predictor.save(fp, self._gpu_id)
 
     def train(self, x_data, y_data, update=True, *args, **kwargs):
-        accum_loss, accum_acc, output = self(x_data, y_data, is_train=update, *args, **kwargs)
+        accum_loss, output = self(x_data, y_data, is_train=update, *args, **kwargs)
         if update and not math.isnan(float(accum_loss.data)):
             self._model.zerograds()
             accum_loss.backward()
             self._opt.update()
-        return accum_loss.data, accum_acc.data, output
+        return accum_loss.data, output
 
     def decode(self, x_data, *args, **kwargs):
         return self(x_data, is_train=False, *args, **kwargs) 

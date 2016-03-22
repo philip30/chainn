@@ -35,7 +35,6 @@ class ParallelTrainer:
         for epoch in range(max_epoch):
             trained        = 0
             epoch_loss     = 0
-            epoch_accuracy = 0
             
             # Shuffling batch
             random.shuffle(train_data)
@@ -43,17 +42,14 @@ class ParallelTrainer:
             # Training from the corpus
             onEpochStart(epoch)
             for src, trg in train_data:
-                accum_loss, accum_acc, output = model.train(src, trg)
+                accum_loss, output = model.train(src, trg)
                 epoch_loss     += accum_loss
-                epoch_accuracy += accum_acc
 
                 onBatchUpdate(output, src, trg, trained, epoch, accum_loss)
                 trained += len(src)
-            epoch_loss     /= len(train_data)
-            epoch_accuracy /= len(train_data)
             
             # Cleaning up fro the next epoch
-            onEpochUpdate(epoch_loss, epoch_accuracy, prev_loss, epoch)
+            onEpochUpdate(epoch_loss, prev_loss, epoch)
             prev_loss = epoch_loss
             gc.collect()
 

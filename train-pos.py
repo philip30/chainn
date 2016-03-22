@@ -59,18 +59,15 @@ def main():
     for ep in range(epoch_total):
         UF.trace("Epoch %d" % (ep+1))
         epoch_loss = 0
-        epoch_acc  = 0
         for x_data, y_data in training_data():
-            accum_loss, accum_acc, output = model.train(x_data, y_data)
+            accum_loss, output = model.train(x_data, y_data)
             if args.verbose:
                 for src, pos, ref in zip(x_data, output, y_data):
                     print("INP:", X.str_rpr(src), file=sys.stderr)
                     print("POS:", Y.str_rpr(pos), file=sys.stderr)
                     print("REF:", Y.str_rpr(ref), file=sys.stderr)
             epoch_loss += accum_loss
-            epoch_acc  += accum_acc
         epoch_loss /= len(data)
-        epoch_acc /= len(data)
 
         # Decaying Weight
         if prev_loss < epoch_loss and hasattr(opt,'lr'):
@@ -81,7 +78,6 @@ def main():
         prev_loss = epoch_loss
 
         print("Loss:", epoch_loss, file=sys.stderr)
-        print("Accuracy:", epoch_acc, file=sys.stderr)
 
     UF.trace("Saving model....")
     with ModelFile(open(args.model_out, "w")) as model_out:
