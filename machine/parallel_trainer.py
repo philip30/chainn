@@ -13,8 +13,14 @@ def init_seed(seed):
             cuda.cupy.random.seed(seed)
         random.seed(seed)
 
+def init_gpu(use_gpu):
+    if hasattr(cuda, "cupy"):
+        if use_gpu >= 0:
+            cuda.get_device(use_gpu).use()
+
 class ParallelTrainer:
-    def __init__(self, seed=0):
+    def __init__(self, seed=0, use_gpu=-1):
+        init_gpu(use_gpu)
         init_seed(seed)
 
     def load_data(self, src, trg, loader, batch, cut):

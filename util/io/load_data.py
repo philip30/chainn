@@ -34,7 +34,7 @@ def batch(data, dicts, batch_size=1):
     for item in data:
         for i in range(len(item)):
             batch_list[i].append(item[i])
-        size += len(item[0])
+        size += 1
 
         if size >= batch_size:
             yield unsorted_batch(batch_list, dicts)

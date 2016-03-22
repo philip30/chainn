@@ -51,7 +51,7 @@ if args.save_models:
     args.save_len = 1
 
 """ Training """
-trainer   = ParallelTrainer(args.seed)
+trainer   = ParallelTrainer(args.seed, args.gpu)
  
 # data
 UF.trace("Loading corpus + dictionary")
