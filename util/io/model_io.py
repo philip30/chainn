@@ -73,7 +73,7 @@ class ModelFile:
         number = int(self.read())
         for i in range(number):
             line = self.read().split("\t")
-            dct[line[0]][line[1]] = float(line[2])
+            dct[int(line[0])][int(line[1])] = float(line[2])
 
     # Chainer Link Write
     def write_embed(self, f):
