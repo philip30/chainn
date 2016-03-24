@@ -41,7 +41,7 @@ class ParallelTextClassifier(ChainnClassifier):
                     output[i].append(y[i])
         
         if y_data is not None:
-            accum_loss = accum_loss / (src_len * batch_size)
+            accum_loss = accum_loss / src_len
             return accum_loss, output
         else:
             return output

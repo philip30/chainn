@@ -75,7 +75,7 @@ class EncDecNMT(ChainnClassifier):
 
         output = DecodingOutput(output, alignment)
         if y_data is not None:
-            accum_loss = accum_loss / (gen_limit * batch_size)
+            accum_loss = accum_loss / gen_limit
             return accum_loss, output
         else:
             return output

@@ -49,6 +49,7 @@ class ParallelTrainer:
                 trained += len(src)
             
             # Cleaning up fro the next epoch
+            epoch_loss /= len(train_data)
             onEpochUpdate(epoch_loss, prev_loss, epoch)
             prev_loss = epoch_loss
             gc.collect()
