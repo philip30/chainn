@@ -34,6 +34,7 @@ parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words 
 parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
 # DictAttn
 parser.add_argument("--dict",type=str, help="Tab separated trg give src dictionary")
+parser.add_argument("--dict_caching",action="store_true", help="Whether to cache the whole dictionary densely")
 args = parser.parse_args()
 
 """ Sanity Check """

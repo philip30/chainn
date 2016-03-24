@@ -14,7 +14,7 @@ from chainn.util.io import ModelFile
 from chainn.link import NMTClassifier
 
 # Length of truncated BPTT
-BP_LEN = 60
+BP_LEN = 1000
 
 class EncDecNMT(ChainnClassifier):
 

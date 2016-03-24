@@ -23,8 +23,9 @@ class DictAttentional(Attentional):
 
     def __init__(self, src_voc, trg_voc, args, *other, **kwargs):
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
-        self._dict = self._load_dictionary(args.dict, src_voc, trg_voc)
-
+        self._caching = args.dict_caching if hasattr(args, "dict_caching") else False
+        self._dict    = self._load_dictionary(args.dict, src_voc, trg_voc)
+        
     def reset_state(self, src, trg, *args, **kwargs):
         SRC = self._src_voc
         TRG = self._trg_voc
@@ -36,25 +37,40 @@ class DictAttentional(Attentional):
 
         prob_dict = np.zeros((batch_size, src_len, vocab_size), dtype=np.float32)
        
-        cache = {}
         for i in range(batch_size):
             for j in range(src_len):
                 src_word = src[i][j]
                 if src_word in dct:
-                    if src_word in cache:
-                        dict_vector = cache[src_word]
+                    if self._caching:
+                        prob_dict[i][j] = self.calculate_global_cache_dict(src_word)
                     else:
-                        dict_vector = self.calculate_dict_vector(src_word, prob_dict, vocab_size)
-                        cache[src_word] = dict_vector
-                    prob_dict[i][j] = dict_vector
+                        prob_dict[i][j] = self.calculate_local_cache_dict(src_word, dct)
+                    
         self.prob_dict = Variable(xp.array(prob_dict, dtype=np.float32))
         return super(DictAttentional, self).reset_state(src, trg, *args, **kwargs) 
 
-    def calculate_dict_vector(self, src, prob_dict, vocab_size):
-        ret_prob = np.zeros((vocab_size), dtype=np.float32)
-        for trg_word, p in self._dict[src].items():
+    def calculate_global_cache_dict(self, src_word):
+        return self._dict[src_word]
+        
+    def calculate_local_cache_dict(self, src_word, dct, cache={}):
+        if src_word in cache:
+            dict_vector = cache[src_word]
+        else:
+            dict_vector = self.calculate_dict_vector(dct[src_word])
+            cache[src_word] = dict_vector
+        return dict_vector
+
+    def calculate_dict_vector(self, dct):
+        ret_prob = np.zeros((self._output), dtype=np.float32)
+        for trg_word, p in dct.items():
             ret_prob[trg_word] += p
         return ret_prob
+
+    def _compile_dictionary(self, dct):
+        ret = {}
+        for src in dct:
+            ret[src] = self.calculate_dict_vector(dct[src])
+        return ret
 
     def _load_dictionary(self, dict_dir, src_voc, trg_voc):
         if type(dict_dir) is not str:
@@ -67,8 +83,9 @@ class DictAttentional(Attentional):
                 if src in self._src_voc and trg in self._trg_voc:
                     prob = float(line[2])
                     dct[self._src_voc[src]][self._trg_voc[trg]] = prob
-
-        return dict(dct)
+        self._dict_dir = dict_dir
+        dct = dict(dct)
+        return self._compile_dictionary(dct) if self._caching else dct
 
     def _additional_score(self, y, a, src):
         batch_size = len(y.data)
@@ -84,11 +101,10 @@ class DictAttentional(Attentional):
 
     @staticmethod
     def _load_details(fp, args, xp, SRC, TRG):
-        args.dict = defaultdict(lambda:{})
-        fp.read_2leveldict(args.dict)
-        args.dict = dict(args.dict)
-             
+        args.dict = fp.read()
+        args.dict_caching = fp.read() == "True"
+
     def _save_details(self, fp):
-        super(DictAttentional, self)._save_details(fp)
-        fp.write_2leveldict(self._dict)
+        fp.write(self._dict_dir)
+        fp.write(str(self._caching))
     

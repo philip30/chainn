@@ -45,6 +45,11 @@ class TestCase(unittest.TestCase):
         else:
             raise NotImplementedError()
  
+    def assertDctEqual(self, x, y):
+        self.assertEqual(len(x), len(y))
+        for xi in x:
+            self.assertTrue(xi in y)
+            self.assertEqual(list(x[xi]), list(y[xi]))
 
     def assertLinearEqual(self, x, y):
         self.assertMatrixEqual(x.W.data, y.W.data)

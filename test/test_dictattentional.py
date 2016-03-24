@@ -17,15 +17,14 @@ class Args:
         self.hidden = 5
         self.embed = 5
         self.depth = 5
-        self.dict = path.join(path.dirname(__file__), "data/dict.txt") 
+        self.dict = path.join(path.dirname(__file__), "data/dict.txt")
+        self.dict_caching = True
 
 class InitArgs(object):
     def __init__(self, init):
         self.init_model = init
 
-
 class TestDictAttn(TestCase):
-    
     def setUp(self):
         src=["I am Philip", "I am a student"]
         trg=["私 は フィリップ です", "私 は 学生 です"]
@@ -58,7 +57,7 @@ class TestDictAttn(TestCase):
             model1 = model.load(fp, DictAttentional, args, np)
     
         self.assertModelEqual(model, model1)
-        self.assertEqual(model._dict, model1._dict)
+        self.assertDctEqual(model._dict, model1._dict)
 
 if __name__ == "__main__":
     unittest.main()
