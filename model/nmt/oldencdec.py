@@ -74,4 +74,7 @@ class EncoderDecoder(ChainnBasicModel):
         # Updating
         self._h  = F.lstm(s_c, YQ(upd) + QQ(s_q))
         return DecodingOutput(y)
+    
+    def clean_state(self):
+        pass
 

@@ -72,7 +72,8 @@ class EncDecNMT(ChainnClassifier):
                     bp_ctr = 0
                     accum_loss.backward()
                     accum_loss.unchain_backward()
-
+        model.predictor.clean_state()
+        
         output = DecodingOutput(output, alignment)
         if y_data is not None:
             accum_loss = accum_loss / gen_limit

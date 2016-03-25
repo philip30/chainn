@@ -72,6 +72,10 @@ class Attentional(ChainnBasicModel):
     def _additional_score(self, y, a, x_data):
         return y
 
+    def clean_state(self):
+        self.h = None
+        self.s = None
+
 class Encoder(ChainList):
     def __init__(self, I, E, H, depth):
         self.IE = L.EmbedID(I, E)

@@ -46,8 +46,11 @@ class DictAttentional(Attentional):
                     else:
                         prob_dict[i][j] = self.calculate_local_cache_dict(src_word, dct)
                     
-        self.prob_dict = Variable(xp.array(prob_dict, dtype=np.float32))
+        self.prob_dict = Variable(xp.array(prob_dict))
         return super(DictAttentional, self).reset_state(src, trg, *args, **kwargs) 
+    
+    def clean_state(self):
+        self.prob_dict = None
 
     def calculate_global_cache_dict(self, src_word):
         return self._dict[src_word]

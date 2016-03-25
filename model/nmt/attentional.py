@@ -129,3 +129,6 @@ class Attentional(ChainnBasicModel):
             self.h = c, s, UaH, h, y_p
         return DecodingOutput(y)
 
+    def clean_state(self):
+        pass
+

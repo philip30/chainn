@@ -75,4 +75,7 @@ class EncoderDecoder(ChainnBasicModel):
         # Updating
         self.h  = self.HH(self.EF(w_n, is_train))
         return DecodingOutput(y)
-    
+   
+   def clean_state(self):
+       pass
+
