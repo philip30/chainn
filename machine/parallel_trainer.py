@@ -48,4 +48,11 @@ class ParallelTrainer:
             gc.collect()
 
         onTrainingFinish(epoch)
-    
+
+    def eval(self, dev_data, model):
+        accum_loss = 0
+        for src, trg in dev_data:
+            loss, _ = model.train(src, trg, learn=False)
+            accum_loss += loss
+        return accum_loss
+

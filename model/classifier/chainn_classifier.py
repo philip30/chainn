@@ -22,9 +22,9 @@ class ChainnClassifier(object):
         if optimizer is not None:
             self._opt.setup(self._model)
     
-    def train(self, x_data, y_data, *args, **kwargs):
+    def train(self, x_data, y_data, learn=True, *args, **kwargs):
         accum_loss, output = self._train(x_data, y_data, *args, **kwargs)
-        if not math.isnan(float(accum_loss.data)):
+        if learn and not math.isnan(float(accum_loss.data)):
             self._model.zerograds()
             accum_loss.backward()
             self._opt.update()

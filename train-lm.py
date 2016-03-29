@@ -29,6 +29,7 @@ parser.add_argument("--gpu", type=int, default=-1, help="Specify GPU to be used,
 parser.add_argument("--init_model", type=str, help="Init the training weights with saved model.")
 parser.add_argument("--model",type=str,choices=["lstm"], default="lstm", help="Type of model being trained.")
 parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
+parser.add_argument("--dev", type=str, help="Development data.")
 args = parser.parse_args()
 
 if args.use_cpu:
@@ -43,6 +44,15 @@ X, data    = load_lm_data(sys.stdin)
 data       = list(batch_generator(data, (X, X), args.batch))
 UF.trace("INPUT size:", len(X))
 UF.trace("Data loaded.")
+
+# dev data
+dev_data = None
+if args.dev:
+    with open(args.dev) as dev_fp:
+        UF.trace("Loading dev data")
+        _, dev_data = load_lm_data(dev_fp, X)
+        dev_data = list(batch_generator(dev_data, (X, X), args.batch))
+        UF.trace("Dev data loaded")
 
 """ Setup model """
 UF.trace("Setting up classifier")
@@ -76,6 +86,11 @@ def save_model(epoch):
 def onEpochUpdate(epoch_loss, prev_loss, epoch):
     UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
     UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
+
+    if dev_data is not None:
+        dev_loss = trainer.eval(dev_data, model)
+        UF.trace("Dev Loss:", float(dev_loss))
+        UF.trace("Dev PPL:", math.exp(float(dev_loss)))
 
     # saving model
     if (epoch + 1) % args.save_len == 0:

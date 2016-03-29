@@ -32,6 +32,8 @@ parser.add_argument("--init_model", type=str, help="Init the training weights wi
 parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn", help="Type of model being trained.")
 parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words in corpora to be treated as unknown.")
 parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
+parser.add_argument("--src_dev", type=str)
+parser.add_argument("--trg_dev", type=str)
 # DictAttn
 parser.add_argument("--dict",type=str, help="Tab separated trg give src dictionary")
 parser.add_argument("--dict_caching",action="store_true", help="Whether to cache the whole dictionary densely")
@@ -63,6 +65,16 @@ with open(args.src) as src_fp:
 UF.trace("SRC size:", len(SRC))
 UF.trace("TRG size:", len(TRG))
 UF.trace("Data loaded.")
+
+# dev data
+dev_data = None
+if args.src_dev and args.trg_dev:
+    with open(args.src_dev) as src_fp:
+        with open(args.trg_dev) as trg_fp:
+            UF.trace("Loading dev data")
+            _, _, dev_data = load_nmt_train_data(src_fp, trg_fp, SRC, TRG)
+            dev_data = list(batch_generator(dev_data, (SRC, TRG), args.batch))
+            UF.trace("Dev data loaded")
 
 """ Setup model """
 UF.trace("Setting up classifier")
@@ -96,6 +108,11 @@ def save_model(epoch):
 def onEpochUpdate(epoch_loss, prev_loss, epoch):
     UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
     UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
+
+    if dev_data is not None:
+        dev_loss = trainer.eval(dev_data, model)
+        UF.trace("Dev Loss:", float(dev_loss))
+        UF.trace("Dev PPL:", math.exp(float(dev_loss)))
 
     # saving model
     if (epoch + 1) % args.save_len == 0:

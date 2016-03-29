@@ -12,9 +12,6 @@ from chainn.model.nmt import EncoderDecoder, Attentional, DictAttentional
 from chainn.util import DecodingOutput
 from chainn.util.io import ModelFile
 
-# Length of truncated BPTT
-BP_LEN = 1000
-
 def collect_output(src_col, output, alignment, out):
     y = UF.argmax(out.y.data)
     for i in range(len(y)):
@@ -39,15 +36,13 @@ class EncDecNMT(ChainnClassifier):
         gen_limit  = len(y_data[0])
         
         # Perform encoding + Reset state
-        self._model.reset_state(x_data, y_data, True, *args, **kwargs)
+        self._model.reset_state(x_data, y_data, *args, **kwargs)
 
         if self._collect_output:
             output    = np.zeros((batch_size, gen_limit), dtype=np.float32)
             alignment = np.zeros((batch_size, gen_limit, src_len), dtype=np.float32)
         
         accum_loss = 0
-        bp_ctr     = 0
-
         # Decoding
         for j in range(gen_limit):
             s_t         = Variable(xp.array([y_data[i][j] for i in range(len(y_data))], dtype=np.int32))
@@ -60,11 +55,6 @@ class EncDecNMT(ChainnClassifier):
             if doutput.a is None:
                 alignment = None
 
-            bp_ctr += 1
-            if bp_ctr % BP_LEN == 0:
-                bp_ctr = 0
-                accum_loss.backward()
-                accum_loss.unchain_backward()
         self._model.clean_state()
         
         output = DecodingOutput(output, alignment) if self._collect_output else None
