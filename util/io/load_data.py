@@ -30,7 +30,6 @@ def batch(data, dicts, batch_size=1):
     new_batch = lambda: [[] for _ in range(len(data[0]))]
     batch_list = new_batch()
     size = 0
-    #for src, trg in sorted(holder, key=lambda x: len(x[0]), reverse=debug):
     for item in data:
         for i in range(len(item)):
             batch_list[i].append(item[i])
@@ -147,4 +146,10 @@ def load_lm_data(lines, SRC=None, cut_threshold=1):
             replace_unknown=replace_unk)
 
     return SRC, data
+
+def load_lm_gen_data(lines, SRC):
+    def preprocessing(line):
+        return ["<s>"] + line.strip().split() + [SRC.eos()]
+ 
+    return load_test_data(lines, SRC, preprocessing)
 

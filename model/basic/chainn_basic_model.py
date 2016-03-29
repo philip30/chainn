@@ -18,6 +18,9 @@ class ChainnBasicModel(ChainList):
         self._trg_voc = trg_voc
         self._activation = activation
         self._xp      = xp
+    
+    def _construct_model(self, *args, **kwargs):
+        raise NotImplementedError("Construct model is still abstract?")
 
     def save(self, fp, gpu_id=-1):
         if gpu_id > 0:
@@ -30,14 +33,17 @@ class ChainnBasicModel(ChainList):
         fp.write("Dep:\t"+str(self._depth))
         fp.write("Emb:\t"+str(self._embed))
         fp.write_activation(self._activation)
-        self._src_voc.save(fp)
-        self._trg_voc.save(fp)
+        self._save_vocabulary(fp)
         self._save_details(fp)
         fp.write_param_list(self)
 
         if gpu_id > 0:
             self.to_gpu(gpu_id)
-  
+
+    def _save_vocabulary(self, fp):
+        self._src_voc.save(fp)
+        self._trg_voc.save(fp)
+
     @staticmethod
     def load(fp, Model, args, xp):
         args.input   = int(fp.read().split("\t")[1])
@@ -45,16 +51,18 @@ class ChainnBasicModel(ChainList):
         args.hidden = int(fp.read().split("\t")[1])
         args.depth  = int(fp.read().split("\t")[1])
         args.embed  = int(fp.read().split("\t")[1])
-        act    = fp.read_activation()
-        src    = Vocabulary.load(fp)
-        trg    = Vocabulary.load(fp)
+        act         = fp.read_activation()
+        src, trg    = Model._load_vocabulary(fp)
         Model._load_details(fp, args, xp, src, trg)
         ret    = Model(src, trg, args, act, xp)
         fp.read_param_list(ret)
         return ret
-
-    def _construct_model(self, *args, **kwargs):
-        raise NotImplementedError("Construct model is still abstract?")
+    
+    @staticmethod
+    def _load_vocabulary(fp):
+        src = Vocabulary.load(fp)
+        trg = Vocabulary.load(fp)
+        return src, trg
 
     @staticmethod
     def _load_details(fp, args, xp, SRC, TRG):

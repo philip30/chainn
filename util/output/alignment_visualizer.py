@@ -19,7 +19,7 @@ class AlignmentVisualizer:
             print(index+start_index, file=fp)
             
             src_data = src[index]
-            trg_data = trg[index]
+            trg_data = list(trg[index])
             eos = trg_voc.eos_id()
 
             if eos in trg_data:

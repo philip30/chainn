@@ -5,12 +5,12 @@ import chainn.util.functions as UF
 
 from chainer import optimizers
 from chainn.util import AlignmentVisualizer
-from chainn.util.io import ModelFile, load_nmt_train_data
+from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
 from chainn.model import EncDecNMT
 from chainn.machine import ParallelTrainer
 
 """ Arguments """
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser("A trainer for NMT model.")
 positive = lambda x: UF.check_positive(x, int)
 positive_decimal = lambda x: UF.check_positive(x, float)
 # Required
@@ -56,17 +56,20 @@ trainer   = ParallelTrainer(args.seed, args.gpu)
  
 # data
 UF.trace("Loading corpus + dictionary")
-SRC, TRG, train_data = trainer.load_data(args.src, args.trg, load_nmt_train_data, args.batch, args.unk_cut)
+with open(args.src) as src_fp:
+    with open(args.trg) as trg_fp:
+        SRC, TRG, train_data = load_nmt_train_data(src_fp, trg_fp, cut_threshold=args.unk_cut)
+        train_data = list(batch_generator(train_data, (SRC, TRG), args.batch))
 UF.trace("SRC size:", len(SRC))
 UF.trace("TRG size:", len(TRG))
 UF.trace("Data loaded.")
 
-# Setup model
+""" Setup model """
 UF.trace("Setting up classifier")
 opt   = optimizers.Adam()
 model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
 
-# Training Callback
+""" Training Callback """
 def onEpochStart(epoch):
     UF.trace("Starting Epoch", epoch+1)
 
@@ -103,6 +106,6 @@ def onTrainingFinish(epoch):
         save_model(epoch)
     UF.trace("training complete!")
 
-# Execute Training loop
+""" Execute Training loop """
 trainer.train(train_data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish)
 

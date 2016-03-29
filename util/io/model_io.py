@@ -121,7 +121,7 @@ class ModelFile:
                 self.read_linear(param[i])
             elif type(item) == EmbedID:
                 self.read_embed(param[i])
-            elif type(item) == LSTM or type(item) == chainn.link.LSTM:
+            elif type(item) == LSTM:
                 self.read_lstm(param[i])
             elif type(item) == LinearInterpolation:
                 self.read_linter(param[i])
@@ -136,7 +136,7 @@ class ModelFile:
                 self.write_linear(item)
             elif type(item) == EmbedID:
                 self.write_embed(item)
-            elif type(item) == LSTM or type(item) == chainn.link.LSTM:
+            elif type(item) == LSTM:
                 self.write_lstm(item)
             elif type(item) == LinearInterpolation:
                 self.write_linter(item)

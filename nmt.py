@@ -11,7 +11,7 @@ from chainn.util.io import load_nmt_test_data
 from chainn.machine import Tester
 
 """ Arguments """
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser("A Neural Machine Translation Decoder.")
 positive = lambda x: UF.check_positive(x, int)
 # Required
 parser.add_argument("--init_model", type=str, help="Directory to the model trained with train-nmt.", required=True)
@@ -69,7 +69,7 @@ def onDecodingFinish(data, output):
         print(TRG.str_rpr(out))
 
 # Execute testing
-tester = Tester(load_nmt_test_data, SRC, decoding_options, onDecodingStart, onBatchUpdate, onSingleUpdate, onDecodingFinish, batch=args.batch)
+tester = Tester(load_nmt_test_data, SRC, onDecodingStart, onBatchUpdate, onSingleUpdate, onDecodingFinish, options=decoding_options, batch=args.batch)
 tester.test(args.src, model)
 
 # Finishing up

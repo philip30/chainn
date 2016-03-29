@@ -5,61 +5,54 @@ import chainer.functions as F
 from chainer import cuda
 
 from chainn import functions as UF
-from chainn.link import Classifier
 from chainn.util.io import ModelFile
-
-def setup_gpu(use_gpu):
-    ret = None
-    if not hasattr(cuda, "cupy"):
-        use_gpu  = -1
-        ret = np
-    else:
-        if use_gpu >= 0:
-            ret = cuda.cupy
-            cuda.get_device(use_gpu).use()
-        else:
-            ret = np
-    return ret, use_gpu
 
 class ChainnClassifier(object):
     def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=-1, collect_output=False, activation=F.tanh):
         self._opt            = optimizer
-        self._xp, use_gpu    = setup_gpu(use_gpu)
-        self._model          = self._load_classifier()(self._load_model(args, X, Y, activation))
+        self._xp, use_gpu    = UF.setup_gpu(use_gpu)
+        self._model          = self._load_model(args, X, Y, activation)
         self._collect_output = collect_output
-        self._src_voc        = X if not args.init_model else self._model.predictor._src_voc
-        self._trg_voc        = Y if not args.init_model else self._model.predictor._trg_voc
         self._gpu_id         = use_gpu
 
         if use_gpu >= 0:
             self._model = self._model.to_gpu(use_gpu)
+        
         # Setup Optimizer
         if optimizer is not None:
             self._opt.setup(self._model)
     
-    def save(self, fp):
-        fp.write_optimizer_state(self._opt)
-        self._model.predictor.save(fp, self._gpu_id)
-
-    def train(self, x_data, y_data, update=True, *args, **kwargs):
-        accum_loss, output = self(x_data, y_data, is_train=update, *args, **kwargs)
-        if update and not math.isnan(float(accum_loss.data)):
+    def train(self, x_data, y_data, *args, **kwargs):
+        accum_loss, output = self._train(x_data, y_data, *args, **kwargs)
+        if not math.isnan(float(accum_loss.data)):
             self._model.zerograds()
             accum_loss.backward()
             self._opt.update()
+        else:
+            UF.trace("Warning: LOSS is nan, ignoring!")
         return accum_loss.data, output
 
-    def decode(self, x_data, *args, **kwargs):
-        return self(x_data, is_train=False, *args, **kwargs) 
+    def classify(self, x_data, *args, **kwargs):
+        return self._classify(x_data, *args, **kwargs) 
+
+    def eval(self, x_data, y_data, *args, **kwargs):
+        return self._eval(x_data, y_data, *args, **kwargs)
 
     def get_vocabularies(self):
-        return self._src_voc, self._trg_voc
+        return self._model._src_voc, self._model._trg_voc
 
-    def __call__(self, x_data, y_data=None):
-        raise NotImplementedError("Shouldn't instantitate this class.")
-
-    def _load_classifier(self):
-        return Classifier
+    def _calculate_loss(self, y, ground_truth):
+        return F.softmax_cross_entropy(y, ground_truth)
+ 
+    def report(self):
+        pass
+    
+    ###################
+    ### Save & Load 
+    ###################
+    def save(self, fp):
+        fp.write_optimizer_state(self._opt)
+        self._model.save(fp, self._gpu_id)
 
     def _load_model(self, args, X, Y, activation):
         assert hasattr(self, "_all_models"), "Shoudln't instantitate this class."
@@ -75,6 +68,15 @@ class ChainnClassifier(object):
             args.output = len(Y)
             return UF.select_model(args.model, self._all_models)(X, Y, args, activation=activation, xp=self._xp)
     
-    def report(self):
-        pass
+    ###################
+    ### Abstract Method 
+    ###################
+    def _train(self, x_data, y_data, *args, **kwargs):
+        raise NotImplementedError()
+
+    def _decode(self, x_data, *args, **kwargs):
+        raise NotImplementedError()
+
+    def _eval(self, x_data, y_data, *args, **kwargs):
+        raise NotImplementedError()
 

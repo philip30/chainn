@@ -89,7 +89,7 @@ class TestNMT(TestCase):
             model1 = EncDecNMT(InitArgs(model_out))
                 
             # Check
-            self.assertModelEqual(model._model.predictor, model1._model.predictor)
+            self.assertModelEqual(model._model, model1._model)
 
     def test_NMT_encdec(self):
         self.run("encdec", "")

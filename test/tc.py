@@ -38,7 +38,7 @@ class TestCase(unittest.TestCase):
             self.assertLinearEqual(xi, yi)
         elif type(xi) == EmbedID:
             self.assertEmbedEqual(xi, yi)
-        elif type(xi) == LSTM or type(xi) == chainn.link.component.lstm.LSTM:
+        elif type(xi) == LSTM:
             self.assertLSTMEqual(xi, yi)
         elif issubclass(xi.__class__, ChainList):
             self.assertChainListEqual(xi, yi)

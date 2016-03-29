@@ -1,101 +1,91 @@
 #!/usr/bin/env python3
 
-import sys
-import argparse
-import math
-import numpy as np
-from collections import defaultdict
-
-import chainer
+import sys, argparse, math
 import chainer.functions as F
-from chainer import Chain, optimizers, Variable
+import chainn.util.functions as UF
 
-from chainn import functions as UF
-from chainn.model import ParallelTextClassifier
-from chainn.util.io import load_lm_data, batch_generator, ModelFile
+from chainer import optimizers
+from chainn.util import AlignmentVisualizer
+from chainn.util.io import ModelFile, load_lm_data, batch_generator
+from chainn.model import LanguageModel
+from chainn.machine import ParallelTrainer
 
-def parse_args():
-    parser = argparse.ArgumentParser("Program for POS-Tagging classification using RNN/LSTM-RNN")
-    parser.add_argument("--hidden", type=int, help="Hidden unit size", default=200)
-    parser.add_argument("--embed", type=int, help="Embedding vector size", default=200)
-    parser.add_argument("--depth", type=int, help="Depth of the network", default=2)
-    parser.add_argument("--batch", type=int, help="Minibatch size", default=64)
-    parser.add_argument("--epoch", type=int, help="Epoch", default=50)
-    parser.add_argument("--lr", type=float, default=0.05)
-    parser.add_argument("--model_out", type=str, help="Where the model is saved", required=True)
-    parser.add_argument("--init_model", type=str, help="Initialize model with the previous")
-    parser.add_argument("--model", type=str, choices=["lstm", "rnn"], default="lstm")
-    parser.add_argument("--dev", type=str)
-    parser.add_argument("--use_cpu", action="store_true")
-    parser.add_argument("--gpu", type=int, default=-1)
-    return parser.parse_args()
+parser = argparse.ArgumentParser("Program to train POS Tagger model using LSTM")
+positive = lambda x: UF.check_positive(x, int)
+positive_decimal = lambda x: UF.check_positive(x, float)
+# Required
+parser.add_argument("--model_out", type=str, required=True)
+# Options
+parser.add_argument("--hidden", type=positive, default=128, help="Size of hidden layer.")
+parser.add_argument("--embed", type=positive, default=128, help="Size of embedding vector.")
+parser.add_argument("--batch", type=positive, default=512, help="Number of (src) words in batch.")
+parser.add_argument("--epoch", type=positive, default=10, help="Number of epoch to train the model.")
+parser.add_argument("--depth", type=positive, default=1, help="Depth of the network.")
+parser.add_argument("--save_len", type=positive, default=1, help="Number of iteration being done for ")
+parser.add_argument("--verbose", action="store_true", help="To output the training progress for every sentence in corpora.")
+parser.add_argument("--use_cpu", action="store_true", help="Force to use CPU.")
+parser.add_argument("--save_models", action="store_true", help="Save models for every iteration with auto enumeration.")
+parser.add_argument("--gpu", type=int, default=-1, help="Specify GPU to be used, negative for using CPU.")
+parser.add_argument("--init_model", type=str, help="Init the training weights with saved model.")
+parser.add_argument("--model",type=str,choices=["lstm"], default="lstm", help="Type of model being trained.")
+parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
+args = parser.parse_args()
 
-def check_args(args):
-    if args.use_cpu:
-        args.gpu = -1
-    return args
+if args.use_cpu:
+    args.gpu = -1
 
-def main():
-    args = parse_args()
-    args = check_args(args)
-    
-    # Variable
-    epoch_total = args.epoch
-    dev_data = None
+""" Training """
+trainer   = ParallelTrainer(args.seed, args.gpu)
 
-    # data
-    UF.trace("Loading corpus + dictionary")
-    X, train_data = load_lm_data(sys.stdin)
-    if args.dev:
-        with open(args.dev) as dev_fp:
-            _, dev_data = load_lm_data(dev_fp, X)
+# data
+UF.trace("Loading corpus + dictionary")
+X, data    = load_lm_data(sys.stdin)
+data       = list(batch_generator(data, (X, X), args.batch))
+UF.trace("INPUT size:", len(X))
+UF.trace("Data loaded.")
 
-    training_data = lambda: batch_generator(train_data, (X, X), batch_size=args.batch)
-    development_data = lambda: batch_generator(dev_data, (X, X), batch_size=args.batch)
+""" Setup model """
+UF.trace("Setting up classifier")
+opt   = optimizers.Adam()
+model = LanguageModel(args, X, X, opt, args.gpu, activation=F.relu, collect_output=args.verbose)
 
-    # Setup model
-    UF.trace("Setting up classifier")
-    opt   = optimizers.Adam()
-    model = ParallelTextClassifier(args, X, X, opt, args.gpu, activation=F.relu)
-    
-    # Hooking
-    opt.add_hook(chainer.optimizer.GradientClipping(10))
+""" Training Callback """
+def onEpochStart(epoch):
+    UF.trace("Starting Epoch", epoch+1)
 
-    # Begin training
-    UF.trace("Begin training Language Model")
-    prev_loss = 1e10
-    for ep in range(epoch_total):
-        UF.trace("Epoch %d" % (ep+1))
-        epoch_loss = 0
-        for x_data, y_data in training_data():
-            accum_loss, output = model.train(x_data, y_data)
-            epoch_loss += float(accum_loss)
-        epoch_loss /= len(train_data)
+def report(output, src, trg, trained, epoch):
+    for index in range(len(src)):
+        source   = SRC.str_rpr(src[index])
+        ref      = TRG.str_rpr(trg[index])
+        out      = TRG.str_rpr(output.y[index])
+        UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch+1, args.epoch, index+trained, source, out, ref))
 
-        print("PPL Train:", math.exp(epoch_loss), file=sys.stderr)
+def onBatchUpdate(output, src, trg, trained, epoch, accum_loss):
+    if args.verbose:
+        report(output, src, trg, trained, epoch)
+    UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])))
 
-        # Evaluate on Dev Set
-        if args.dev:
-            dev_loss = 0
-            for x_data, y_data in development_data():
-                accum_loss, _ = model.train(x_data, y_data, update=False)
-                dev_loss   += float(accum_loss)
-            dev_loss /= len(dev_data)
-            epoch_loss = dev_loss
-            print("PPL Dev:", math.exp(dev_loss), file=sys.stderr)
-            
-        # Decaying Weight
-        if prev_loss < epoch_loss and hasattr(opt,'lr'):
-            try:
-                opt.lr *= 0.5
-                UF.trace("Reducing LR:", opt.lr)
-            except: pass
-        prev_loss = epoch_loss
-
-    UF.trace("Saving model to", args.model_out, "...")
-    with ModelFile(open(args.model_out, "w")) as model_out:
+def save_model(epoch):
+    out_file = args.model_out
+    if args.save_models:
+        out_file += "-" + str(epoch)
+    UF.trace("saving model to " + out_file + "...")
+    with ModelFile(open(out_file, "w")) as model_out:
         model.save(model_out)
 
-if __name__ == "__main__":
-    main()
+def onEpochUpdate(epoch_loss, prev_loss, epoch):
+    UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
+    UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
+
+    # saving model
+    if (epoch + 1) % args.save_len == 0:
+        save_model(epoch)        
+
+def onTrainingFinish(epoch):
+    if epoch % args.save_len != 0:
+        save_model(epoch)
+    UF.trace("training complete!")
+
+""" Execute Training loop """
+trainer.train(data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish)
 

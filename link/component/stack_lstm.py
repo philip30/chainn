@@ -1,31 +1,27 @@
 import chainer.links as L
 import chainer.functions as F
-import copy
-from chainer import Variable, ChainList
-from chainn.link import LSTM
-
-DROP_RATIO=0.5
+from chainer import ChainList
 
 class StackLSTM(ChainList):
-    def __init__(self, I, O, depth):
+    def __init__(self, I, O, depth, drop_ratio=0.0):
         chain_list = []
         for i in range(depth):
             start = I if i == 0 else O
-            chain_list.append(LSTM(start, O))
+            chain_list.append(L.LSTM(start, O))
+        self._drop_ratio = drop_ratio
         super(StackLSTM, self).__init__(*chain_list)
-
-    def __call__(self, inp, is_train=False):
-        ret = None
-        for i, lstm in enumerate(self):
-            h = inp if i == 0 else ret
-            ret = lstm(h)
-        return F.dropout(ret, train=is_train, ratio=DROP_RATIO)
     
     def reset_state(self):
         for lstm in self:
             lstm.reset_state()
-
-    def copy_state(self, other):
-        for lstm_1, lstm_2 in zip(self, other):
-            lstm_1.c = copy.copy(lstm_2.c)
+    
+    def __call__(self, inp, is_train=False):
+        ret = None
+        for i, hidden in enumerate(self):
+            h = inp if i == 0 else ret
+            ret = hidden(h)
+        return F.dropout(ret, train=is_train, ratio=self._drop_ratio)
+    
+    def hidden(self):
+        return L.LSTM
 

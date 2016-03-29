@@ -28,13 +28,26 @@ def print_argmax(data, file=sys.stdout):
     for x in data:
         print(x, file=file)
 
+def setup_gpu(use_gpu):
+    ret = None
+    if not hasattr(cuda, "cupy"):
+        use_gpu  = -1
+        ret = np
+    else:
+        if use_gpu >= 0:
+            ret = cuda.cupy
+            cuda.get_device(use_gpu).use()
+        else:
+            ret = np
+    return ret, use_gpu
+
 def print_classification(data, trg, file=sys.stdout):
     data = cuda.to_cpu(data).argmax(1)
     for x in data:
         print(trg.tok_rpr(x), file=file)
 
-def argmax(data):
-    data = cuda.to_cpu(data).argmax(1)
+def argmax(data, number=1):
+    data = cuda.to_cpu(data).argmax(number)
     return [x for x in data]
 
 # SMT decoder model

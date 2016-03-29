@@ -2,77 +2,86 @@
 
 import sys
 import argparse
-import numpy as np
 import math
 
-from collections import defaultdict
 from chainn import functions as UF
-from chainn.model import ParallelTextClassifier
-from chainn.util.io import load_lm_data, batch_generator
+from chainn.model import LanguageModel
+from chainn.util.io import load_lm_data, load_lm_gen_data, batch_generator
+from chainn.machine import Tester
 
-def parse_args():
-    parser = argparse.ArgumentParser("Program for multi-class classification using multi layered perceptron")
-    parser.add_argument("--batch", type=int, help="Minibatch size", default=1)
-    parser.add_argument("--init_model", required=True, type=str, help="Initiate the model from previous")
-    parser.add_argument("--operation", choices=["sppl", "cppl"], help="sppl: Sentence-wise ppl\ncppl: Corpus-wise ppl", default="sppl")
-    parser.add_argument("--gen", action="store_true")
-    parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--use_cpu", action="store_true")
-    parser.add_argument("--gpu", type=int, default=-1)
-    return parser.parse_args()
+""" Arguments """
+parser = argparse.ArgumentParser("Language model using LSTM RNN.")
+positive = lambda x: UF.check_positive(x, int)
+# Required
+parser.add_argument("--init_model", required=True, type=str, help="Initiate the model from previous")
+# Optional
+parser.add_argument("--src", type=str, help="Specify this to do batched decoding, it has a priority than stdin.")
+parser.add_argument("--batch", type=int, help="Minibatch size", default=1)
+parser.add_argument("--operation", choices=["sppl", "cppl", "gen"], help="sppl: Sentence-wise ppl\ncppl: Corpus-wise ppl\ngen: Read input, start generating random words.", default="sppl")
+parser.add_argument("--use_cpu", action="store_true")
+parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu).")
+parser.add_argument("--verbose", action="store_true")
+parser.add_argument("--gen_limit", type=positive, default=50)
+parser.add_argument("--eos_disc", type=float, default=0.0, help="Give fraction positive discount to output longer sentence.")
+args = parser.parse_args()
+op   = args.operation
 
-def main():
-    args = check_args(parse_args())
+if op == "sppl" and args.batch != 1:
+    raise ValueError("Currently sentence based perplexity not supports multi batching.")
+if args.use_cpu:
+    args.gpu = -1
+
+# Loading model
+UF.trace("Setting up classifier")
+model  = LanguageModel(args, use_gpu=args.gpu, collect_output=True)
+VOC, _ = model.get_vocabularies()
+decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc}
+
+# Testing callbacks
+def PPL(loss):
+    try:
+        return math.exp(loss.data)
+    except:
+        return math.exp(loss)
+
+def onDecodingStart():
+    if op == "gen":
+        UF.trace("Sentence generation started.")
+    elif op == "cppl":
+        UF.trace("Corpus PPL calculation started.")
+    elif op == "sppl":
+        UF.trace("Sentence PPL calculation started.")
+
+def onBatchUpdate(ctr, src, trg):
+    # Decoding
+    if args.verbose:
+        pass
+
+def onSingleUpdate(ctr, src, trg):
+    if op == "gen":
+        print(VOC.str_rpr(trg[0]))
+    elif op == "sppl":
+        print(PPL(trg))
+
+def onDecodingFinish(data, output):
+    if op == "gen":
+        for src_id, (inp, out) in sorted(output.items(), key=lambda x:x[0]):
+            print(TRG.str_rpr(out))
+    elif op == "cppl":
+        UF.trace("Corpus PPL:", PPL(output))
+        print(output.data)
+
+tester = Tester(load_lm_gen_data, VOC, onDecodingStart, onBatchUpdate, onSingleUpdate, onDecodingFinish, batch=args.batch, out_vocab=VOC, options=decoding_options)
+if op == "sppl" or op == "cppl":
+    if not args.src:
+        _, data = load_lm_data(sys.stdin, VOC)
+    else:
+        with open(args.src) as src_fp:
+            _, data = load_lm_data(src_fp, VOC)
+    data = list(batch_generator(data, (VOC, VOC), args.batch))
+    tester.eval(data, model)
+elif op == "gen":
+    tester.test(args.src, model)
+else:
+    raise NotImplementedError("Undefined operation:", op)
     
-    # Setup model
-    UF.trace("Setting up classifier")
-    model = ParallelTextClassifier(args, use_gpu=args.gpu, collect_output=True)
-    X, Y  = model.get_vocabularies()
-
-    # data
-    UF.trace("Loading test data + dictionary from stdin")
-    _, data = load_lm_data(sys.stdin, X)
-       
-    # Calculating PPL
-    gen_fp = open(args.gen, "w") if args.gen else None
-    UF.trace("Start Calculating PPL")
-    corpus_loss = 0
-    for x_data, y_data in batch_generator(data, (X,), batch_size=args.batch):
-        accum_loss, output = model.train(x_data, y_data, update=False)
-        
-        accum_loss = accum_loss / len(x_data)
-        for inp, result in zip(x_data, output):
-            # Counting PPL
-            if args.operation == "sppl":
-                print(math.exp(accum_loss))
-            else:
-                corpus_loss += float(accum_loss) / len(x_data)
-            
-            # Printing some outputs
-            inp    = X.str_rpr(inp)
-            result = Y.str_rpr(result)
-            if gen_fp is not None:
-                print(" ".join(result), file=gen_fp)
-
-            if args.verbose:
-                print("INP:", inp, file=sys.stderr)
-                print("OUT:", result, file=sys.stderr)
-                print("PPL:", math.exp(accum_loss), file=sys.stderr)
-    
-    if args.operation == "cppl":
-        corpus_loss /= len(data)
-        print(math.exp(corpus_loss))
-
-    if gen_fp is not None:
-        gen_fp.close()
-
-def check_args(args):
-    if args.operation == "sppl" and args.batch != 1:
-        raise ValueError("Currently sentence based perplexity not supports multi batching.")
-    if args.use_cpu:
-        args.gpu = -1
-    return args
-
-if __name__ == "__main__":
-    main()
-

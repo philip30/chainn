@@ -16,6 +16,7 @@ from chainn.util import DecodingOutput
 # (Luong et al., 2015)
 # http://arxiv.org/pdf/1508.04025v5.pdf
 
+DROPOUT_RATIO = 0.5
 class Attentional(ChainnBasicModel):
     name = "attn" 
     
@@ -79,8 +80,8 @@ class Attentional(ChainnBasicModel):
 class Encoder(ChainList):
     def __init__(self, I, E, H, depth):
         self.IE = L.EmbedID(I, E)
-        self.EF = StackLSTM(E, H, depth)
-        self.EB = StackLSTM(E, H, depth)
+        self.EF = StackLSTM(E, H, depth, DROPOUT_RATIO)
+        self.EB = StackLSTM(E, H, depth, DROPOUT_RATIO)
         self.AE = L.Linear(2*H, H)
         self.H  = H
         super(Encoder, self).__init__(self.IE, self.EF, self.EB, self.AE)
@@ -126,7 +127,7 @@ class AttentionLayer(ChainList):
 
 class Decoder(ChainList):
     def __init__(self, O, E, H, depth):
-        self.DF = StackLSTM(E, H, depth)
+        self.DF = StackLSTM(E, H, depth, DROPOUT_RATIO)
         self.WS = L.Linear(H, O)
         self.WC = L.Linear(2*H, H)
         self.OE = L.EmbedID(O, E)
