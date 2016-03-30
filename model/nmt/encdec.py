@@ -92,7 +92,7 @@ class Decoder(ChainList):
         self.WS = L.Linear(H, O)
         self.OE = L.EmbedID(O, E)
         self.HE = L.Linear(H, E)
-        super(Decoder, self).__init__(self.DF, self.WS, self.OE)
+        super(Decoder, self).__init__(self.DF, self.WS, self.OE, self.HE)
 
     def reset(self, s, is_train=False):
         self.DF.reset_state()
