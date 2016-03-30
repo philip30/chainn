@@ -3,7 +3,7 @@ import chainer.links as L
 import chainer.functions as F
 
 # Chainer
-from chainer import Variable
+from chainer import Variable, ChainList
 
 # Chainn
 from chainn import functions as UF
@@ -16,66 +16,100 @@ from chainn.link import StackLSTM
 # (Sutskever et al., 2013)
 # http://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf
 
+DROPOUT_RATIO=0.5
 class EncoderDecoder(ChainnBasicModel):
     name = "encdec"    
     
     def _construct_model(self, input, output, hidden, depth, embed):
-        assert(depth >= 1)
         I, O, E, H = input, output, embed, hidden
-        
-        self.IE = L.EmbedID(I,E)
-        self.EF = StackLSTM(E,H,depth)
-        self.WS = L.Linear(H, O)
-        self.OE = L.EmbedID(O, E)
-        self.HH = L.Linear(H, H)
-
-        ret = []
-        # Encoder
-        ret.append(self.IE)
-        ret.append(self.EF)
-        ret.append(self.WS)
-        ret.append(self.OE)
-        ret.append(self.HH)
-
-        return ret
+        self.encoder = Encoder(I, E, H, depth)
+        self.decoder = Decoder(O, E, H, depth)
+        return [self.encoder, self.decoder]
     
     # Encoding all the source sentence
-    def reset_state(self, x_data, y_data, *args, **kwargs):
-        # Unpacking
-        batch_size = len(x_data)
-        src_len    = len(x_data[0])
-        xp = self._xp
-        f  = self._activation
-        is_train = y_data is not None
-        self.EF.reset_state()
-
-        for j in range(src_len):
-            s_x   = Variable(xp.array([x_data[i][-j-1] for i in range(batch_size)], dtype=np.int32))
-            s_i   = self.IE(s_x)
-            h     = self.EF(s_i, is_train)
-        self.h = h
-
-        return self.HH(h)
-
+    def reset_state(self, x_data, y_data, is_train=False, *args, **kwargs):
+        s = self.encoder(x_data, is_train=is_train)
+        self.h = self.decoder.reset(s)
+        return self.h
+    
     # Decode one word
-    def __call__ (self, x_data, train_ref=None, is_train=True, *args, **kwargs):
-        # Unpacking
-        xp = self._xp
-        f  = self._activation
+    def __call__ (self, x_data, train_ref=None, is_train=False, eos_disc=0.0, *args, **kwargs):
+        # Calculate the score of all target word (not yet softmax)
+        y = self.decoder(self.h)
+        
+        # To adjust brevity score during decoding
+        if train_ref is None and eos_disc != 0.0:
+            y = self._adjust_brevity(yp, eos_disc)
 
-        # Decoding
-        y = self.WS(self.h)
-        
-        if train_ref is not None:
-            wt = Variable(xp.array(train_ref.data, dtype=np.int32))
-        else:
-            wt = Variable(xp.array(UF.argmax(y.data), dtype=np.int32))
-        w_n = self.OE(wt)
-        
-        # Updating
-        self.h  = self.HH(self.EF(w_n, is_train))
+        # Conceive the next state
+        self.h = self._decode_next(y, train_ref=train_ref, is_train=is_train)
         return DecodingOutput(y)
+
+    # Adjusting brevity during decoding
+    def _adjust_brevity(self, yp, eos_disc):
+        v = self._xp.ones(len(self._trg_voc), dtype=np.float32)
+        v[self._trg_voc.eos_id()] = 1-eos_disc
+        v  = F.broadcast_to(Variable(v), yp.data.shape)
+        return yp * v
+
+    # Update the RNN state 
+    def _decode_next(self, y, train_ref, is_train=False):
+        if train_ref is not None and is_train:
+            # Training
+            wt = train_ref
+        else:
+            # Testing
+            wt = Variable(self._xp.array(UF.argmax(y.data), dtype=np.int32))
+        return self.decoder.update(wt, is_train=is_train)
+
+    def clean_state(self):
+        self.h = None
+
+class Encoder(ChainList):
+    def __init__(self, I, E, H, depth):
+        self.IE = L.EmbedID(I, E)
+        self.EF = StackLSTM(E, H, depth, DROPOUT_RATIO)
+        self.EB = StackLSTM(E, H, depth, DROPOUT_RATIO)
+        self.AE = L.Linear(2*H, H)
+        self.H  = H
+        super(Encoder, self).__init__(self.IE, self.EF, self.EB, self.AE)
+
+    def __call__(self, src, is_train=False, xp=np):
+        # Unpacking
+        B  = len(src)      # Batch Size
+        N  = len(src[0])   # length of source
+        H  = self.H
+        src_col = lambda x: Variable(self.xp.array([src[i][x] for i in range(B)], dtype=np.int32))
+        embed   = lambda e, x: e(self.IE(x), is_train=is_train)
+        
+        # State Reset
+        self.EF.reset_state()
+        self.EB.reset_state()
+        
+        # Forward + backward encoding
+        fe, be = None, None
+        for j in range(N):
+            fe = embed(self.EF, src_col(j))
+            be = embed(self.EB, src_col(-j-1))
+
+        # Joining encoding together
+        return self.AE(F.concat((fe, be), axis=1))
+
+class Decoder(ChainList):
+    def __init__(self, O, E, H, depth):
+        self.DF = StackLSTM(E, H, depth, DROPOUT_RATIO)
+        self.WS = L.Linear(H, O)
+        self.OE = L.EmbedID(O, E)
+        self.HE = L.Linear(H, E)
+        super(Decoder, self).__init__(self.DF, self.WS, self.OE)
+
+    def reset(self, s, is_train=False):
+        self.DF.reset_state()
+        return self.DF(self.HE(s), is_train=is_train)
+
+    def __call__(self, h):
+        return self.WS(F.tanh(h))
    
-   def clean_state(self):
-       pass
+    def update(self, wt, is_train=False):
+        return self.DF(self.OE(wt), is_train=is_train)
 

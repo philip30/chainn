@@ -8,7 +8,7 @@ from chainer import Variable, ChainList
 # Chainn
 from chainn import functions as UF
 from chainn.link import StackLSTM
-from chainn.model.basic import ChainnBasicModel
+from chainn.model.nmt import EncoderDecoder
 from chainn.util import DecodingOutput
 
 # By Philip Arthur (philip.arthur30@gmail.com)
@@ -17,7 +17,7 @@ from chainn.util import DecodingOutput
 # http://arxiv.org/pdf/1508.04025v5.pdf
 
 DROPOUT_RATIO = 0.5
-class Attentional(ChainnBasicModel):
+class Attentional(EncoderDecoder):
     name = "attn" 
     
     def _construct_model(self, input, output, hidden, depth, embed):
@@ -51,23 +51,6 @@ class Attentional(ChainnBasicModel):
         # Conceive the next state
         self.h = self._decode_next(y, train_ref=train_ref, is_train=is_train)
         return DecodingOutput(y, a)
-
-    # Adjusting brevity during decoding
-    def _adjust_brevity(self, yp, eos_disc):
-        v = self._xp.ones(len(self._trg_voc), dtype=np.float32)
-        v[self._trg_voc.eos_id()] = 1-eos_disc
-        v  = F.broadcast_to(Variable(v), yp.data.shape)
-        return yp * v
-
-    # Update the RNN state 
-    def _decode_next(self, y, train_ref, is_train=False):
-        if train_ref is not None and is_train:
-            # Training
-            wt = train_ref
-        else:
-            # Testing
-            wt = Variable(self._xp.array(UF.argmax(y.data), dtype=np.int32))
-        return self.decoder.update(wt, is_train=is_train)
 
     # Whether we want to change y score by linguistic resources?
     def _additional_score(self, y, a, x_data):

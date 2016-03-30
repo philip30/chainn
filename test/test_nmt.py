@@ -12,7 +12,7 @@ class Args(object):
     def __init__(self, model):
         self.hidden = 5
         self.use_cpu = True
-        self.embed = 5
+        self.embed = 6
         self.model = model
         self.depth = 2
         self.init_model = False
@@ -100,6 +100,5 @@ class TestNMT(TestCase):
     def test_NMT_dictattn(self):
         self.run("dictattn", "--dict test/data/dict.txt")
         
-
 if __name__ == "__main__":
     unittest.main()
