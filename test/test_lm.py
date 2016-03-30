@@ -35,7 +35,6 @@ class TestLM(TestCase):
         self.assertEqual(data, data_exp)
 
     def test_lm_run(self):
-        print("----- Testing train+using lm -----")
         script   = path.join(self.script, "execute_lm.sh")
         inp      = path.join(self.data, "lm.train")
         dev      = path.join(self.data, "lm.dev")

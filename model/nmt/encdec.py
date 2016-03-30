@@ -16,14 +16,13 @@ from chainn.link import StackLSTM
 # (Sutskever et al., 2013)
 # http://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf
 
-DROPOUT_RATIO=0.5
 class EncoderDecoder(ChainnBasicModel):
     name = "encdec"    
     
     def _construct_model(self, input, output, hidden, depth, embed):
         I, O, E, H = input, output, embed, hidden
-        self.encoder = Encoder(I, E, H, depth)
-        self.decoder = Decoder(O, E, H, depth)
+        self.encoder = Encoder(I, E, H, depth, self._dropout)
+        self.decoder = Decoder(O, E, H, depth, self._dropout)
         return [self.encoder, self.decoder]
     
     # Encoding all the source sentence
@@ -58,10 +57,10 @@ class EncoderDecoder(ChainnBasicModel):
         self.h = None
 
 class Encoder(ChainList):
-    def __init__(self, I, E, H, depth):
+    def __init__(self, I, E, H, depth, dropout_ratio):
         self.IE = L.EmbedID(I, E)
-        self.EF = StackLSTM(E, H, depth, DROPOUT_RATIO)
-        self.EB = StackLSTM(E, H, depth, DROPOUT_RATIO)
+        self.EF = StackLSTM(E, H, depth, dropout_ratio)
+        self.EB = StackLSTM(E, H, depth, dropout_ratio)
         self.AE = L.Linear(2*H, H)
         self.H  = H
         super(Encoder, self).__init__(self.IE, self.EF, self.EB, self.AE)
@@ -88,8 +87,8 @@ class Encoder(ChainList):
         return self.AE(F.concat((fe, be), axis=1))
 
 class Decoder(ChainList):
-    def __init__(self, O, E, H, depth):
-        self.DF = StackLSTM(E, H, depth, DROPOUT_RATIO)
+    def __init__(self, O, E, H, depth, dropout_ratio):
+        self.DF = StackLSTM(E, H, depth, dropout_ratio)
         self.WS = L.Linear(H, O)
         self.OE = L.EmbedID(O, E)
         self.HE = L.Linear(H, E)

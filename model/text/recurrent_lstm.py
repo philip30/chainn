@@ -3,14 +3,13 @@ import chainer.links as L
 from chainn.model import ChainnBasicModel
 from chainn.link import StackLSTM
 
-DROPOUT_RATIO = 0.5
 class RecurrentLSTM(ChainnBasicModel):
     name = "lstm"
 
     def _construct_model(self, input, output, hidden, depth, embed):
         assert(depth >= 1)
         self.embed  = L.EmbedID(input, embed)
-        self.inner  = StackLSTM(embed, hidden, depth, DROPOUT_RATIO)
+        self.inner  = StackLSTM(embed, hidden, depth, self._dropout)
         self.output = L.Linear(hidden, output)
         return [self.embed, self.inner]
 

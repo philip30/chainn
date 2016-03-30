@@ -6,9 +6,6 @@ from chainn import Vocabulary
 
 class ChainnBasicModel(ChainList):
     def __init__(self, src_voc, trg_voc, args, activation=F.tanh, xp=np):
-        super(ChainnBasicModel, self).__init__(
-            *self._construct_model(args.input, args.output, args.hidden, args.depth, args.embed)
-        )
         self._input   = args.input
         self._output  = args.output
         self._hidden  = args.hidden
@@ -16,9 +13,13 @@ class ChainnBasicModel(ChainList):
         self._embed   = args.embed
         self._src_voc = src_voc
         self._trg_voc = trg_voc
+        self._dropout = args.dropout if hasattr(args, "dropout") else 0.5
         self._activation = activation
         self._xp      = xp
-    
+        super(ChainnBasicModel, self).__init__(
+            *self._construct_model(args.input, args.output, args.hidden, args.depth, args.embed)
+        )
+            
     def _construct_model(self, *args, **kwargs):
         raise NotImplementedError("Construct model is still abstract?")
 

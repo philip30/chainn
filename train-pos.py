@@ -28,6 +28,8 @@ parser.add_argument("--save_models", action="store_true", help="Save models for 
 parser.add_argument("--gpu", type=int, default=-1, help="Specify GPU to be used, negative for using CPU.")
 parser.add_argument("--init_model", type=str, help="Init the training weights with saved model.")
 parser.add_argument("--model",type=str,choices=["lstm"], default="lstm", help="Type of model being trained.")
+parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words in corpora to be treated as unknown.")
+parser.add_argument("--dropout", type=positive_decimal, default=0.2, help="Dropout ratio for LSTM.")
 parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
 args = parser.parse_args()
 
@@ -39,7 +41,7 @@ trainer   = ParallelTrainer(args.seed, args.gpu)
 
 # data
 UF.trace("Loading corpus + dictionary")
-X, Y, data = load_pos_train_data(sys.stdin)
+X, Y, data = load_pos_train_data(sys.stdin, cut_threshold=args.unk_cut)
 data       = list(batch_generator(data, (X, Y), args.batch))
 UF.trace("INPUT size:", len(X))
 UF.trace("LABEL size:", len(Y))

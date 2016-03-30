@@ -16,15 +16,14 @@ from chainn.util import DecodingOutput
 # (Luong et al., 2015)
 # http://arxiv.org/pdf/1508.04025v5.pdf
 
-DROPOUT_RATIO = 0.5
 class Attentional(EncoderDecoder):
     name = "attn" 
     
     def _construct_model(self, input, output, hidden, depth, embed):
         I, O, E, H = input, output, embed, hidden
-        self.encoder   = Encoder(I, E, H, depth)
+        self.encoder   = Encoder(I, E, H, depth, self._dropout)
         self.attention = AttentionLayer()
-        self.decoder   = Decoder(O, E, H, depth)
+        self.decoder   = Decoder(O, E, H, depth, self._dropout)
         return [self.encoder, self.attention, self.decoder]
     
     # Encode all the words in the input sentence
@@ -59,10 +58,10 @@ class Attentional(EncoderDecoder):
         self.s = None
 
 class Encoder(ChainList):
-    def __init__(self, I, E, H, depth):
+    def __init__(self, I, E, H, depth, dropout_ratio):
         self.IE = L.EmbedID(I, E)
-        self.EF = StackLSTM(E, H, depth, DROPOUT_RATIO)
-        self.EB = StackLSTM(E, H, depth, DROPOUT_RATIO)
+        self.EF = StackLSTM(E, H, depth, dropout_ratio)
+        self.EB = StackLSTM(E, H, depth, dropout_ratio)
         self.AE = L.Linear(2*H, H)
         self.H  = H
         super(Encoder, self).__init__(self.IE, self.EF, self.EB, self.AE)
@@ -107,8 +106,8 @@ class AttentionLayer(ChainList):
         return F.softmax(F.batch_matmul(s, h))
 
 class Decoder(ChainList):
-    def __init__(self, O, E, H, depth):
-        self.DF = StackLSTM(E, H, depth, DROPOUT_RATIO)
+    def __init__(self, O, E, H, depth, dropout_ratio):
+        self.DF = StackLSTM(E, H, depth, dropout_ratio)
         self.WS = L.Linear(H, O)
         self.WC = L.Linear(2*H, H)
         self.OE = L.EmbedID(O, E)
