@@ -29,14 +29,15 @@ class EncDecNMT(ChainnClassifier):
         self._all_models = [EncoderDecoder, Attentional, DictAttentional]
         super(EncDecNMT, self).__init__(*args, **kwargs)
 
-    def _train(self, x_data, y_data, *args, **kwargs):
+    def _train(self, x_data, y_data, is_dev, *args, **kwargs):
         xp         = self._xp
         src_len    = len(x_data[0])
         batch_size = len(x_data)
         gen_limit  = len(y_data[0])
+        is_train   = not is_dev
         
         # Perform encoding + Reset state
-        self._model.reset_state(x_data, y_data, *args, **kwargs)
+        self._model.reset_state(x_data, is_train=is_train, *args, **kwargs)
 
         if self._collect_output:
             output    = np.zeros((batch_size, gen_limit), dtype=np.float32)
@@ -46,8 +47,10 @@ class EncDecNMT(ChainnClassifier):
         # Decoding
         for j in range(gen_limit):
             s_t         = Variable(xp.array([y_data[i][j] for i in range(len(y_data))], dtype=np.int32))
-            doutput     = self._model(x_data, is_train=True, *args, **kwargs) # Decode one step
+            doutput     = self._model(x_data, is_train=is_train, *args, **kwargs) # Decode one step
             accum_loss += self._calculate_loss(doutput.y, s_t)
+            
+            self._model.update(self._select_update(doutput.y, s_t, is_train=is_train), is_train=is_train)
 
             # Collecting output
             if self._collect_output:
@@ -68,7 +71,7 @@ class EncDecNMT(ChainnClassifier):
         EOL        = self._model._trg_voc.eos_id()
         
         # Perform encoding + Reset state
-        self._model.reset_state(x_data, None, is_train=False, *args, **kwargs)
+        self._model.reset_state(x_data, is_train=False, *args, **kwargs)
 
         output    = np.zeros((batch_size, gen_limit), dtype=np.float32)
         alignment = np.zeros((batch_size, gen_limit, src_len), dtype=np.float32)
@@ -76,7 +79,9 @@ class EncDecNMT(ChainnClassifier):
         # Decoding
         for j in range(gen_limit):
             doutput = self._model(x_data, is_train=False, *args, **kwargs)
-             
+            
+            self._model.update(self._select_update(doutput.y, None, is_train=False), is_train=False)
+
             if doutput.a is None:
                 alignment = None
 
@@ -91,7 +96,17 @@ class EncDecNMT(ChainnClassifier):
     
     def _calculate_loss(self, y, ground_truth):
         return F.softmax_cross_entropy(y, ground_truth)
-    
+
+    # Update the RNN state 
+    def _select_update(self, y, train_ref, is_train):
+        if train_ref is not None and is_train:
+            # Training
+            wt = train_ref
+        else:
+            # Testing
+            wt = Variable(self._xp.array(UF.argmax(y.data), dtype=np.int32))
+        return wt
+
     def report(self):
         self._model.predictor.report()
 

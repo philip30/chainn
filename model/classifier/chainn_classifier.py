@@ -23,7 +23,7 @@ class ChainnClassifier(object):
             self._opt.setup(self._model)
     
     def train(self, x_data, y_data, learn=True, *args, **kwargs):
-        accum_loss, output = self._train(x_data, y_data, *args, **kwargs)
+        accum_loss, output = self._train(x_data, y_data, not learn, *args, **kwargs)
         if learn and not math.isnan(float(accum_loss.data)):
             self._model.zerograds()
             accum_loss.backward()

@@ -28,13 +28,13 @@ class Attentional(EncoderDecoder):
         return [self.encoder, self.attention, self.decoder]
     
     # Encode all the words in the input sentence
-    def reset_state(self, x_data, y_data, is_train=False, *args, **kwargs):
+    def reset_state(self, x_data, is_train=False, *args, **kwargs):
         self.s, s_n = self.encoder(x_data, is_train=is_train, xp=self._xp)
         self.h = self.decoder.reset(s_n, is_train=is_train)
         return self.s
     
     # Produce one target word
-    def __call__ (self, x_data, train_ref=None, is_train=False, eos_disc=0.0, *args, **kwargs):
+    def __call__ (self, x_data, is_train=False, eos_disc=0.0, *args, **kwargs):
         # Calculate alignment weights between hidden state and source vector context
         a  = self.attention(self.h, self.s)
         
@@ -42,14 +42,12 @@ class Attentional(EncoderDecoder):
         yp = self.decoder(self.s, a, self.h)
         
         # To adjust brevity score during decoding
-        if train_ref is None and eos_disc != 0.0:
+        if eos_disc != 0.0:
             yp = self._adjust_brevity(yp, eos_disc)
 
         # Enhance y
         y = self._additional_score(yp, a, x_data)
         
-        # Conceive the next state
-        self.h = self._decode_next(y, train_ref=train_ref, is_train=is_train)
         return DecodingOutput(y, a)
 
     # Whether we want to change y score by linguistic resources?

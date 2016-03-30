@@ -18,12 +18,13 @@ class ParallelTextClassifier(ChainnClassifier):
         self._all_models = [RecurrentLSTM]
         super(ParallelTextClassifier, self).__init__(*args, **kwargs)
    
-    def _train(self, x_data, y_data, *args, **kwargs):
+    def _train(self, x_data, y_data, is_dev, *args, **kwargs):
         xp         = self._xp
         batch_size = len(x_data)
         src_len    = len(x_data[0])
+        is_train   = not is_dev
    
-        self._model.reset_state(batch_size)
+        self._model.reset_state(batch_size, is_train=is_train)
         output     = None
         if self._collect_output:
             output = np.zeros((batch_size, src_len), dtype=np.float32)
@@ -33,7 +34,7 @@ class ParallelTextClassifier(ChainnClassifier):
         for j in range(src_len):
             words  = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
             labels = Variable(xp.array([y_data[i][j] for i in range(batch_size)], dtype=np.int32))
-            y      = self._model(words, labels)
+            y      = self._model(words, labels, is_train=is_train)
             accum_loss += self._calculate_loss(y, labels)
             
             if self._collect_output:
@@ -46,13 +47,13 @@ class ParallelTextClassifier(ChainnClassifier):
         batch_size = len(x_data)
         src_len    = len(x_data[0])
  
-        self._model.reset_state(batch_size)
+        self._model.reset_state(batch_size, is_train=False)
         output     = np.zeros((batch_size, src_len), dtype=np.float32)
         
         # For each word
         for j in range(src_len):
             words  = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
-            y      = self._model(words)
+            y      = self._model(words, is_train=False)
             collect_output(j, output, y)
 
         return output

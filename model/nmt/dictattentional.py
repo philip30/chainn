@@ -26,7 +26,7 @@ class DictAttentional(Attentional):
         self._caching = args.dict_caching if hasattr(args, "dict_caching") else False
         self._dict    = self._load_dictionary(args.dict, src_voc, trg_voc)
         
-    def reset_state(self, src, trg, *args, **kwargs):
+    def reset_state(self, src, *args, **kwargs):
         SRC = self._src_voc
         TRG = self._trg_voc
         dct = self._dict
@@ -47,7 +47,7 @@ class DictAttentional(Attentional):
                         prob_dict[i][j] = self.calculate_local_cache_dict(src_word, dct)
                     
         self.prob_dict = Variable(xp.array(prob_dict))
-        return super(DictAttentional, self).reset_state(src, trg, *args, **kwargs) 
+        return super(DictAttentional, self).reset_state(src, *args, **kwargs) 
     
     def clean_state(self):
         self.prob_dict = None

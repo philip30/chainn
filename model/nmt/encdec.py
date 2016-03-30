@@ -27,23 +27,25 @@ class EncoderDecoder(ChainnBasicModel):
         return [self.encoder, self.decoder]
     
     # Encoding all the source sentence
-    def reset_state(self, x_data, y_data, is_train=False, *args, **kwargs):
+    def reset_state(self, x_data, is_train=False, *args, **kwargs):
         s = self.encoder(x_data, is_train=is_train)
         self.h = self.decoder.reset(s)
         return self.h
     
     # Decode one word
-    def __call__ (self, x_data, train_ref=None, is_train=False, eos_disc=0.0, *args, **kwargs):
+    def __call__ (self, x_data, is_train=False, eos_disc=0.0, *args, **kwargs):
         # Calculate the score of all target word (not yet softmax)
         y = self.decoder(self.h)
         
         # To adjust brevity score during decoding
-        if train_ref is None and eos_disc != 0.0:
+        if not is_train and eos_disc != 0.0:
             y = self._adjust_brevity(yp, eos_disc)
 
-        # Conceive the next state
-        self.h = self._decode_next(y, train_ref=train_ref, is_train=is_train)
         return DecodingOutput(y)
+
+    # Update decoding state
+    def update(self, wt, is_train=False):
+        self.h = self.decoder.update(wt, is_train=is_train)
 
     # Adjusting brevity during decoding
     def _adjust_brevity(self, yp, eos_disc):
@@ -51,16 +53,6 @@ class EncoderDecoder(ChainnBasicModel):
         v[self._trg_voc.eos_id()] = 1-eos_disc
         v  = F.broadcast_to(Variable(v), yp.data.shape)
         return yp * v
-
-    # Update the RNN state 
-    def _decode_next(self, y, train_ref, is_train=False):
-        if train_ref is not None and is_train:
-            # Training
-            wt = train_ref
-        else:
-            # Testing
-            wt = Variable(self._xp.array(UF.argmax(y.data), dtype=np.int32))
-        return self.decoder.update(wt, is_train=is_train)
 
     def clean_state(self):
         self.h = None

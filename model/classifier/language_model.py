@@ -32,13 +32,13 @@ class LanguageModel(ParallelTextClassifier):
         for j in range(min(gen_limit, src_len)):
             words  = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
             collect_output(j, output, words.data)
-            y = self._model(words)
+            y = self._model(words, is_train=False)
             
         start_gen = j
         for j in range(start_gen, gen_limit - src_len):
             next_word = UF.argmax(y.data)
             collect_output(j, output, next_word)
-            y = self._model(Variable(xp.array(next_word, dtype=np.int32)))
+            y = self._model(Variable(xp.array(next_word, dtype=np.int32)), is_train=False)
             if all(word == EOL for word in next_word):
                 break
 
