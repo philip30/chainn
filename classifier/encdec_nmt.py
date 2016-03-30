@@ -7,7 +7,7 @@ import chainer.functions as F
 
 # Chainn
 import chainn.util.functions as UF
-from chainn.model import ChainnClassifier
+from chainn.classifier import ChainnClassifier
 from chainn.model.nmt import EncoderDecoder, Attentional, DictAttentional
 from chainn.util import DecodingOutput
 from chainn.util.io import ModelFile

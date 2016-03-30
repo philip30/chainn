@@ -4,7 +4,7 @@ import chainer.functions as F
 from chainer import Variable
 
 from chainn import functions as UF
-from chainn.model import ChainnClassifier
+from chainn.classifier import ChainnClassifier
 from chainn.model.text import RecurrentLSTM
 from chainn.util.io import ModelFile
 

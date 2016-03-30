@@ -4,14 +4,13 @@ import chainer.functions as F
 from chainer import Variable
 
 from chainn import functions as UF
-from chainn.model import ParallelTextClassifier
+from chainn.classifier import ParallelTextClassifier
 from chainn.model.text import RecurrentLSTMLM
 from chainn.util.io import ModelFile
 
 def collect_output(src_col, output, out):
     for i in range(len(out)):
         output[i][src_col] = out[i]
-
 
 class LanguageModel(ParallelTextClassifier):
 

@@ -7,7 +7,7 @@ from chainer import optimizers, Variable, cuda
 from chainn.util import Vocabulary
 from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
 from chainn.test import TestCase
-from chainn.model import EncDecNMT
+from chainn.classifier import EncDecNMT
 from chainn.model.nmt import DictAttentional
 
 class Args:

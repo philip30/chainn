@@ -5,7 +5,7 @@ import argparse
 import math
 
 from chainn import functions as UF
-from chainn.model import LanguageModel
+from chainn.classifier import LanguageModel
 from chainn.util.io import load_lm_data, load_lm_gen_data, batch_generator
 from chainn.machine import Tester
 

@@ -1,6 +1,6 @@
 
 import chainer.links as L
-from chainn.model.basic import ChainnBasicModel
+from chainn.model import ChainnBasicModel
 from chainn.link import StackLSTM
 
 DROPOUT_RATIO = 0.5

@@ -12,7 +12,7 @@ from chainer import Variable, cuda
 # Chainn
 from chainn import functions as UF
 from chainn.link import LinearInterpolation
-from chainn.model.basic import ChainnBasicModel
+from chainn.model import ChainnBasicModel
 from chainn.model.nmt import Attentional
 
 # By Philip Arthur (philip.arthur30@gmail.com)

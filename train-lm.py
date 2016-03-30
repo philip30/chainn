@@ -7,7 +7,7 @@ import chainn.util.functions as UF
 from chainer import optimizers
 from chainn.util import AlignmentVisualizer
 from chainn.util.io import ModelFile, load_lm_data, batch_generator
-from chainn.model import LanguageModel
+from chainn.classifier import LanguageModel
 from chainn.machine import ParallelTrainer
 
 parser = argparse.ArgumentParser("Program to train POS Tagger model using LSTM")

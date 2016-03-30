@@ -4,7 +4,7 @@ import sys
 import argparse
 
 from chainn import functions as UF
-from chainn.model import ParallelTextClassifier
+from chainn.classifier import ParallelTextClassifier
 from chainn.util.io import load_pos_test_data
 from chainn.machine import Tester
 

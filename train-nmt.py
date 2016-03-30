@@ -6,7 +6,7 @@ import chainn.util.functions as UF
 from chainer import optimizers
 from chainn.util import AlignmentVisualizer
 from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
-from chainn.model import EncDecNMT
+from chainn.classifier import EncDecNMT
 from chainn.machine import ParallelTrainer
 
 """ Arguments """

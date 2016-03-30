@@ -5,7 +5,7 @@ import argparse
 
 from chainn import functions as UF
 
-from chainn.model import EncDecNMT
+from chainn.classifier import EncDecNMT
 from chainn.util import AlignmentVisualizer
 from chainn.util.io import load_nmt_test_data
 from chainn.machine import Tester

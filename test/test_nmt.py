@@ -6,7 +6,7 @@ from chainer import optimizers
 from chainn.test import TestCase
 from chainn.util import Vocabulary
 from chainn.util.io import load_nmt_train_data, ModelFile
-from chainn.model import EncDecNMT
+from chainn.classifier import EncDecNMT
 
 class Args(object):
     def __init__(self, model):

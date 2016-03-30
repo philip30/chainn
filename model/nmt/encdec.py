@@ -7,7 +7,7 @@ from chainer import Variable, ChainList
 
 # Chainn
 from chainn import functions as UF
-from chainn.model.basic import ChainnBasicModel
+from chainn.model import ChainnBasicModel
 from chainn.util import DecodingOutput
 from chainn.link import StackLSTM
 
