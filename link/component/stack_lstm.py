@@ -22,6 +22,13 @@ class StackLSTM(ChainList):
             ret = hidden(h)
         return F.dropout(ret, train=is_train, ratio=self._drop_ratio)
     
-    def hidden(self):
-        return L.LSTM
+    def get_state(self):
+        ret = []
+        for lstm in self:
+            ret.append((lstm.c, lstm.h))
+        return ret
+
+    def set_state(self, state):
+        for lstm_self, lstm_in in zip(self, state):
+            lstm_self.c, lstm_self.h = lstm_in
 

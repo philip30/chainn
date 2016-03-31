@@ -10,7 +10,7 @@ def unsorted_batch(batches, dicts):
     for x_batch, dct in zip(batches, dicts):
         max_len = max(len(x) for x in x_batch)
         for i in range(len(x_batch)):
-            x_batch[i] += [dct.eos_id() for _ in range(max_len-len(x_batch[i]))]
+            x_batch[i] += [dct.stuff_id() for _ in range(max_len-len(x_batch[i]))]
     return batches
 
 def load_train_data(data, SRC, TRG, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False):

@@ -1,5 +1,6 @@
 
 import sys
+from chainn.util import functions as UF
 from chainn.util.io import batch_generator
 
 class Tester:

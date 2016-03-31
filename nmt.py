@@ -23,16 +23,20 @@ parser.add_argument("--use_cpu", action="store_true")
 parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu).")
 parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--align_out", type=str)
+parser.add_argument("--beam", type=positive, default=1)
+parser.add_argument("--beam_pick", type=positive, default=10)
 parser.add_argument("--eos_disc", type=float, default=0.0, help="Give fraction positive discount to output longer sentence.")
 args  = parser.parse_args()
 
 """ Sanity Check """
 if args.use_cpu:
     args.gpu = -1
+if args.src and args.batch != 1 and args.beam > 1:
+    raise ValueError("Batched decoding does not support beam search.")
 
 """ Begin Testing """
 ao_fp = UF.load_stream(args.align_out)
-decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc}
+decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc, "beam": args.beam, "beam_pick": args.beam_pick}
 
 # Loading model
 UF.trace("Setting up classifier")
@@ -56,6 +60,8 @@ def onBatchUpdate(ctr, src, trg):
 
 def onSingleUpdate(ctr, src, trg):
     align_fp = ao_fp if ao_fp is not None else sys.stderr
+    if args.verbose:
+        print_result(ctr, trg, TRG, src, SRC, sys.stderr)
     print(TRG.str_rpr(trg.y[0]))
     if trg.a is not None:
         AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=align_fp)

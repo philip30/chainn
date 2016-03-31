@@ -56,6 +56,14 @@ class EncoderDecoder(ChainnBasicModel):
     def clean_state(self):
         self.h = None
 
+    def get_state(self):
+        return (self.encoder.EF.get_state(), self.encoder.EB.get_state(), self.decoder.DF.get_state())
+
+    def set_state(self, state):
+        self.encoder.EF.set_state(state[0])
+        self.encoder.EB.set_state(state[1])
+        self.decoder.DF.set_state(state[2])
+
 class Encoder(ChainList):
     def __init__(self, I, E, H, depth, dropout_ratio):
         self.IE = L.EmbedID(I, E)

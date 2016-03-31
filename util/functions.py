@@ -46,10 +46,15 @@ def print_classification(data, trg, file=sys.stdout):
     for x in data:
         print(trg.tok_rpr(x), file=file)
 
-def argmax(data, number=1):
-    data = cuda.to_cpu(data).argmax(number)
+def argmax(data):
+    data = cuda.to_cpu(data).argmax(axis=1)
     return [x for x in data]
 
+def argmax_index(data, top=1):
+    data = cuda.to_cpu(data)
+    top = min(top, len(data))
+    return np.argpartition(data, -top)[-top:]
+    
 # SMT decoder model
 def select_model(name, all_models):
     for pot_model in all_models:

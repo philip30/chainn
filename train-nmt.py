@@ -116,11 +116,11 @@ def onEpochUpdate(epoch_loss, prev_loss, epoch):
         UF.trace("Dev PPL:", math.exp(float(dev_loss)))
 
     # saving model
-    if (epoch + 1) % args.save_len == 0:
+    if args.save_models and (epoch + 1) % args.save_len == 0:
         save_model(epoch)        
 
 def onTrainingFinish(epoch):
-    if epoch % args.save_len != 0:
+    if not args.save_models or epoch % args.save_len != 0:
         save_model(epoch)
     UF.trace("training complete!")
 
