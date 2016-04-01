@@ -3,7 +3,7 @@ import chainer.functions as F
 from chainer import ChainList
 
 class StackLSTM(ChainList):
-    def __init__(self, I, O, depth, drop_ratio=0.0):
+    def __init__(self, I, O, depth, drop_ratio):
         chain_list = []
         for i in range(depth):
             start = I if i == 0 else O

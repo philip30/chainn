@@ -24,7 +24,6 @@ parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negat
 parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--align_out", type=str)
 parser.add_argument("--beam", type=positive, default=1)
-parser.add_argument("--beam_pick", type=positive, default=10)
 parser.add_argument("--eos_disc", type=float, default=0.0, help="Give fraction positive discount to output longer sentence.")
 args  = parser.parse_args()
 
@@ -36,7 +35,7 @@ if args.src and args.batch != 1 and args.beam > 1:
 
 """ Begin Testing """
 ao_fp = UF.load_stream(args.align_out)
-decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc, "beam": args.beam, "beam_pick": args.beam_pick}
+decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc, "beam": args.beam}
 
 # Loading model
 UF.trace("Setting up classifier")

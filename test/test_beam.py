@@ -44,7 +44,8 @@ class TestBeam(TestCase):
 
         # Load
         model1 = EncDecNMT(InitArgs(model_out))
-        model.classify(src, beam=10, beam_pick=5)
+        k      = model.classify(src, beam=10)
+        print(trg_voc.str_rpr(k.y[0]))
 
 if __name__ == "__main__":
     unittest.main()

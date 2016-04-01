@@ -52,7 +52,7 @@ class EncDecNMT(ChainnClassifier):
         output = DecodingOutput(output, alignment) if self._collect_output else None
         return (accum_loss / gen_limit), output
 
-    def _classify(self, x_data, gen_limit=50, beam=1, beam_pick=10, *args, **kwargs):
+    def _classify(self, x_data, gen_limit=50, beam=1, *args, **kwargs):
         # Unpacking
         xp         = self._xp
         batch_size = len(x_data)
@@ -62,9 +62,9 @@ class EncDecNMT(ChainnClassifier):
         # Perform encoding + Reset state
         self._model.reset_state(x_data, is_train=False, *args, **kwargs)
 
-        output    = np.zeros((batch_size, gen_limit), dtype=np.float32)
+        output    = np.zeros((batch_size, gen_limit), dtype=np.int32)
         alignment = np.zeros((batch_size, gen_limit, src_len), dtype=np.float32)
-        if beam == 1:
+        if False and  beam == 1:
             # Normal Decoding
             for j in range(gen_limit):
                 doutput = self._model(x_data, is_train=False, *args, **kwargs)
@@ -81,10 +81,9 @@ class EncDecNMT(ChainnClassifier):
         else:
             model_update = lambda x: self._model.update(Variable(self._xp.array([[x]], dtype=np.int32)), is_train=False)
             # Beam Decoding
-            beam_search(beam, beam_pick, gen_limit, self._model, x_data, output, alignment, model_update)
+            beam_search(beam, gen_limit, self._model, x_data, output, alignment, model_update, *args, **kwargs)
 
         self._model.clean_state()
-        
         return DecodingOutput(output, alignment)
 
     def _calculate_loss(self, y, ground_truth):
@@ -104,43 +103,46 @@ class EncDecNMT(ChainnClassifier):
         self._model.predictor.report()
 
 eps = 1e-6
-def beam_search(beam_size, beam_pick, gen_limit, model, src, output, alignment, model_update, *args, **kwargs):
+def beam_search(beam_size, gen_limit, model, src, output, alignment, model_update, *args, **kwargs):
     queue     = [(0, model.get_state(), 0, DecodingOutput(), None)] # (num_decoded, state, log prob, output, parent)
-    take_size = beam_pick                              # Only take top 10 words
-    loop      = 0
+    beam_size = min(beam_size, len(model._trg_voc))
     EOL       = model._trg_voc.eos_id()
-    queue_state = None
+    end_state = None
     # Beam search algorithm
-    while type(loop) == int:
-        queue_state = queue.pop(0)
-        decoded, state, prob, out, parent = queue_state
-        if out.y == EOL or decoded == gen_limit:
+    for loop in range(gen_limit):
+        states = []
+        reach_end = False
+        for i, state in enumerate(queue):
+            decoded, dec_state, prob, out, parent = state
+            end_state = state
+            if i == 0 and out.y == EOL:
+                reach_end = True
+                break
+            
+            if loop != 0:
+                model.set_state(dec_state)
+                model_update(out.y)
+
+            # Conceive the next state
+            doutput = model(src, is_train=False, *args, **kwargs)
+            dec_state = model.get_state()
+            # Take the best 1 (beam search only for single decoding)
+            y     = F.softmax(doutput.y).data[0]
+            out_a = doutput.a.data[0]
+            # Take up several words that makes maximum
+            agmx = UF.argmax_index(y, beam_size)
+            # Update model state based on those words
+            for index in agmx:
+                states.append((decoded+1, dec_state, prob + math.log(y[index] + eps), DecodingOutput(index, out_a), state))
+        if reach_end:
             break
-        
-        # Setting up for decoding
-        if loop != 0:
-            model.set_state(state)
-            model_update(out.y)
 
-        # Conceive the next state
-        doutput = model(src, is_train=False, *args, **kwargs)
-        # Take the best 1 (beam search only for single decoding)
-        y     = F.softmax(doutput.y).data[0]
-        out_a = doutput.a.data[0]
-        # Take up several words that makes maximum
-        agmx = UF.argmax_index(y, take_size)
-        # Update model state based on those words
-        for index in agmx:
-            queue.append((decoded+1, state, prob + math.log(y[index] + eps), DecodingOutput(index, out_a), queue_state))
-
-        queue = sorted(queue, key=lambda x: x[2], reverse=True)
-        
-        queue = queue[:min(len(queue), beam_size)+1]
-        loop = 1
+        states = sorted(states, key=lambda x: x[2], reverse=True)
+        queue = states[:beam_size]
 
     # Collecting output (1-best)
-    while queue_state is not None:
-        decoded, state, prob, out, parent = queue_state
+    while end_state is not None:
+        decoded, state, prob, out, parent = end_state
         decoded-=1
         if parent is not None:
             output[0][decoded] = out.y
@@ -149,7 +151,8 @@ def beam_search(beam_size, beam_pick, gen_limit, model, src, output, alignment, 
                     alignment[0][decoded][i] = float(x_a)
             
         # Next state
-        queue_state = parent
+        end_state = parent
+
     return output, alignment
 
 def collect_output(src_col, output, alignment, out):
