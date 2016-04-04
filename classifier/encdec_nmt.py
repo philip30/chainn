@@ -64,7 +64,7 @@ class EncDecNMT(ChainnClassifier):
 
         output    = np.zeros((batch_size, gen_limit), dtype=np.int32)
         alignment = np.zeros((batch_size, gen_limit, src_len), dtype=np.float32)
-        if False and  beam == 1:
+        if beam == 1:
             # Normal Decoding
             for j in range(gen_limit):
                 doutput = self._model(x_data, is_train=False, *args, **kwargs)

@@ -48,7 +48,8 @@ def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
         print(ctr + i, file=fp)
         print("SRC:", SRC.str_rpr(sent), file=fp)
         print("TRG:", TRG.str_rpr(result), file=fp)
-   
+    fp.flush()
+
 def onDecodingStart():
     UF.trace("Decoding started.")
 
