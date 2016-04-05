@@ -93,29 +93,24 @@ class ModelFile:
 
     # Chainer Link Read
     def read_embed(self, f):
-        UF.trace("Reading Embed", debug_level=1)
         self.read_matrix(f.W, float)
 
     def read_linear(self, f):
-        UF.trace("Reading Linear", debug_level=1)
         self.read_matrix(f.W, float)
         self.read_vector(f.b, float)
 
     def read_lstm(self, f):
-        UF.trace("Reading LSTM", debug_level=1)
         self.read_matrix(f.upward.W, float)
         self.read_vector(f.upward.b, float)
         self.read_matrix(f.lateral.W, float)
 
     def read_linter(self, f):
-        UF.trace("Reading Linear Interpolation", debug_level=1)
         f.W.data[...] = float(self.read()) 
 
     def get_file_pointer(self):
         return self.__fp
 
     def read_param_list(self, param):
-        UF.trace("Reading Param List", debug_level=1)
         for i, item in enumerate(param):
             if type(item) == Linear:
                 self.read_linear(param[i])
@@ -154,7 +149,6 @@ class ModelFile:
             raise NotImplementedError(type(f))
 
     def read_activation(self):
-        UF.trace("Reading Activation", debug_level=1)
         line = self.read()
         if line == "tanh": return F.tanh
         elif line == "relu": return F.relu
@@ -173,7 +167,6 @@ class ModelFile:
             raise NotImplementedError(type(opt))
 
     def read_optimizer_state(self):
-        UF.trace("Reading Optimizer State", debug_level=1)
         line = self.read().split("\t")
         opt = None
         if line[0] == "sgd":

@@ -19,10 +19,14 @@ from chainn.util import DecodingOutput
 class Attentional(EncoderDecoder):
     name = "attn" 
     
+    def __init__(self, src_voc, trg_voc, args, *other, **kwargs):
+        self._attention_type = args.attention_type if hasattr(args, "attention_type") else "dot"
+        super(Attentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
+
     def _construct_model(self, input, output, hidden, depth, embed):
         I, O, E, H = input, output, embed, hidden
         self.encoder   = Encoder(I, E, H, depth, self._dropout)
-        self.attention = AttentionLayer()
+        self.attention = AttentionLayer(H, self._attention_type)
         self.decoder   = Decoder(O, E, H, depth, self._dropout)
         return [self.encoder, self.attention, self.decoder]
     
@@ -56,6 +60,15 @@ class Attentional(EncoderDecoder):
     def clean_state(self):
         self.h = None
         self.s = None
+
+    @staticmethod
+    def _load_details(fp, args, xp, SRC, TRG):
+        super(Attentional, Attentional)._load_details(fp, args, xp, SRC, TRG)
+        args.attention_type = fp.read()
+
+    def _save_details(self, fp):
+        super(Attentional, self)._save_details(fp)
+        fp.write(self._attention_type)
 
 class Encoder(ChainList):
     def __init__(self, I, E, H, depth, dropout_ratio):
@@ -96,12 +109,36 @@ class Encoder(ChainList):
         return S, s_j
 
 class AttentionLayer(ChainList):
-    def __init__(self):
-        super(AttentionLayer, self).__init__()
-    
+    def __init__(self, hidden, attn_type):
+        self._type = attn_type
+        param = []
+        if attn_type == "general":
+            self.WA = L.Linear(hidden , hidden)
+            param.append(self.WA)
+        elif attn_type == "concat":
+            self.WA = L.Linear(2 * hidden , 1)
+        super(AttentionLayer, self).__init__(*param)
+        
     def __call__(self, h, s):
-        return self._dot(h, s)
+        if self._type == "dot":
+            return self._dot(h, s)
+        elif self._type == "general":
+            return self._general(h, s)
+        elif self._type == "concat":
+            return self._concat(h, s)
+        else:
+            raise Exception("Unrecognized type:", self._type) 
+    
+    def _general(self, h, s):
+        batch, src_len, hidden = s.data.shape
+        param_s = F.reshape(self.WA(F.reshape(s, (batch * src_len, hidden))), (batch, src_len, hidden))
+        return self._dot(h, param_s)
 
+    def _concat(self, h, s):
+        batch, src_len, hidden = s.data.shape
+        concat_h  = F.reshape(F.concat(F.broadcast(F.expand_dims(h, 1), s), axis=1), (batch * src_len, 2* hidden))
+        return F.softmax(F.reshape(self.WA(concat_h), (batch, src_len)))
+                
     def _dot(self, h, s):
         return F.softmax(F.batch_matmul(s, h))
 
@@ -115,9 +152,7 @@ class Decoder(ChainList):
         super(Decoder, self).__init__(self.DF, self.WS, self.WC, self.OE, self.HE)
     
     def __call__(self, s, a, h):
-        B = len(s.data)
-        H = len(h.data[0])
-        c = F.reshape(F.batch_matmul(a, s, transa=True), (B, H))
+        c = F.reshape(F.batch_matmul(a, s, transa=True), h.data.shape)
         ht = F.tanh(self.WC(F.concat((h, c), axis=1)))
         return self.WS(ht)
 

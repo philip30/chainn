@@ -94,8 +94,15 @@ class TestNMT(TestCase):
     def test_NMT_encdec(self):
         self.run("encdec", "")
 
-    def test_NMT_attn(self):
-        self.run("attn", "")
+    def test_NMT_attn_dot(self):
+        self.run("attn", "--attention_type dot")
+    
+    def test_NMT_attn_general(self):
+        self.run("attn", "--attention_type general")
+
+    def test_NMT_attn_concat(self):
+        self.run("attn", "--attention_type concat")
+
 
     def test_NMT_dictattn(self):
         self.run("dictattn", "--dict test/data/dict.txt")

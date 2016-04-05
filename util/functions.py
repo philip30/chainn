@@ -8,10 +8,9 @@ from chainer import cuda
 from numpy.random import RandomState
 
 # Utility
-def trace(*args, debug_level=0):
-    if debug_level <= globalvars.DEBUG_LEVEL:
-        print(datetime.datetime.now(), '...', *args, file=sys.stderr)
-        sys.stderr.flush()
+def trace(*args):
+    print(datetime.datetime.now(), '...', *args, file=sys.stderr)
+    sys.stderr.flush()
 
 def load_stream(fp):
     if fp is None or len(fp) == 0:

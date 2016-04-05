@@ -25,7 +25,8 @@ class DictAttentional(Attentional):
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._caching = args.dict_caching if hasattr(args, "dict_caching") else False
         self._dict    = self._load_dictionary(args.dict, src_voc, trg_voc)
-        
+        self._method  = args.dict_method if hasattr(args, "dict_method") else "bias"
+
     def reset_state(self, src, *args, **kwargs):
         SRC = self._src_voc
         TRG = self._trg_voc
@@ -104,10 +105,14 @@ class DictAttentional(Attentional):
 
     @staticmethod
     def _load_details(fp, args, xp, SRC, TRG):
+        super(DictAttentional, DictAttentional)._load_details(fp, args, xp, SRC, TRG)
         args.dict = fp.read()
         args.dict_caching = fp.read() == "True"
+        args.dict_method  = fp.read()
 
     def _save_details(self, fp):
+        super(DictAttentional, self)._save_details(fp)
         fp.write(self._dict_dir)
         fp.write(str(self._caching))
+        fp.write(self._method)
     
