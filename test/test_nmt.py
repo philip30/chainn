@@ -6,13 +6,13 @@ from chainer import optimizers
 from chainn.test import TestCase
 from chainn.util import Vocabulary
 from chainn.util.io import load_nmt_train_data, ModelFile
-from chainn.model import EncDecNMT
+from chainn.classifier import EncDecNMT
 
 class Args(object):
     def __init__(self, model):
         self.hidden = 5
         self.use_cpu = True
-        self.embed = 5
+        self.embed = 6
         self.model = model
         self.depth = 2
         self.init_model = False
@@ -89,17 +89,23 @@ class TestNMT(TestCase):
             model1 = EncDecNMT(InitArgs(model_out))
                 
             # Check
-            self.assertModelEqual(model._model.predictor, model1._model.predictor)
+            self.assertModelEqual(model._model, model1._model)
 
     def test_NMT_encdec(self):
         self.run("encdec", "")
 
-    def test_NMT_attn(self):
-        self.run("attn", "")
+    def test_NMT_attn_dot(self):
+        self.run("attn", "--attention_type dot")
+    
+    def test_NMT_attn_general(self):
+        self.run("attn", "--attention_type general")
+
+    def test_NMT_attn_concat(self):
+        self.run("attn", "--attention_type concat")
+
 
     def test_NMT_dictattn(self):
         self.run("dictattn", "--dict test/data/dict.txt")
         
-
 if __name__ == "__main__":
     unittest.main()

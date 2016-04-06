@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from chainn.model.basic import RNN
+from chainn.model.text import RecurrentLSTM
 from chainn.util import Vocabulary
 from chainn.util.io import ModelFile
 from chainn.test import TestCase
@@ -8,10 +8,10 @@ from chainn.test import TestCase
 class Args(object):
     pass
 
-class TestRNN(TestCase):
+class TestRecurrentLSTM(TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestRNN, self).__init__(*args, **kwargs)
-        self.Model = RNN
+        super(TestRecurrentLSTM, self).__init__(*args, **kwargs)
+        self.Model = RecurrentLSTM
 
     def setUp(self):
         src_voc = Vocabulary()
@@ -42,7 +42,7 @@ class TestRNN(TestCase):
         self.assertModelEqual(self.model, model1)
 
     def test_init_size(self):
-        self.assertEqual(len(self.model), 4) # Input, Embed, Hidden, Output
+        self.assertEqual(len(self.model) + len(self.model.inner) + 1, 4) # Input, embed, hiddenx1, output
 
     def test_depth_size(self):
         args = Args()
@@ -52,7 +52,7 @@ class TestRNN(TestCase):
         args.embed = 1
         args.hidden = 1
         model = self.Model(Vocabulary(), Vocabulary(), args)
-        self.assertEqual(len(model), 8) # Input, Embed, 5*Hidden, Output
+        self.assertEqual(len(model) + len(model.inner) + 1, 8) # Input, Embed, 5*Hidden, Output
 
 if __name__ == "__main__":
     unittest.main()

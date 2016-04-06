@@ -54,7 +54,6 @@ class TestPOS(TestCase):
         self.assertEqual(data, data_exp)
 
     def test_pos_run(self):
-        print("----- Testing train+using pos -----")
         script    = path.join(self.script, "execute_pos.sh")
         inp       = path.join(self.data, "pos.train")
         test      = path.join(self.data, "pos.test")

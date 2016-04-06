@@ -6,7 +6,7 @@ from chainer import optimizers
 from chainn.util import Vocabulary
 from chainn.util.io import ModelFile
 from chainn.test import TestCase
-from chainn.model import ParallelTextClassifier
+from chainn.classifier import ParallelTextClassifier
 
 class Args(object):
     def __init__(self):
@@ -50,7 +50,7 @@ class TestEncDecClassifier(TestCase):
         model1 = ParallelTextClassifier(InitArgs(model))
             
         # Check
-        self.assertModelEqual(self.model._model.predictor, model1._model.predictor)
+        self.assertModelEqual(self.model._model, model1._model)
 
 if __name__ == "__main__":
     unittest.main()

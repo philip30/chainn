@@ -10,10 +10,10 @@ def unsorted_batch(batches, dicts):
     for x_batch, dct in zip(batches, dicts):
         max_len = max(len(x) for x in x_batch)
         for i in range(len(x_batch)):
-            x_batch[i] += [dct.eos_id() for _ in range(max_len-len(x_batch[i]))]
+            x_batch[i] += [dct.stuff_id() for _ in range(max_len-len(x_batch[i]))]
     return batches
 
-def load_train_data(data, SRC, TRG, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False, debug=False):
+def load_train_data(data, SRC, TRG, src_count=None, trg_count=None, x_cut=1, y_cut=1, replace_unknown=False):
     rep_rare = lambda vocab, w, count, cut: vocab[w] if count is None or count[w] > cut else vocab.unk_id()
     rep_unk  = lambda vocab, w: vocab[w] if w in vocab else vocab.unk_id()
     convert_to_id = lambda vocab, w, count, cut: rep_unk(vocab, w) if replace_unknown else rep_rare(vocab, w, count, cut)
@@ -26,18 +26,19 @@ def load_train_data(data, SRC, TRG, src_count=None, trg_count=None, x_cut=1, y_c
     return holder
 
 def batch(data, dicts, batch_size=1):
+    data = sorted(data, key=lambda x: len(x[0]), reverse=True)
     new_batch = lambda: [[] for _ in range(len(data[0]))]
     batch_list = new_batch()
-    item_count = 0
-    #for src, trg in sorted(holder, key=lambda x: len(x[0]), reverse=debug):
+    size = 0
     for item in data:
         for i in range(len(item)):
             batch_list[i].append(item[i])
-        item_count += 1
+        size += 1
 
-        if item_count % batch_size == 0:
+        if size >= batch_size:
             yield unsorted_batch(batch_list, dicts)
             batch_list = new_batch()
+            size = 0
     if len(batch_list[0]) != 0:
         yield unsorted_batch(batch_list, dicts)
 
@@ -81,7 +82,7 @@ def load_pos_test_data(lines, SRC):
 """
 * NMT *
 """
-def load_nmt_train_data(src, trg, SRC=None, TRG=None, cut_threshold=1, debug=False):
+def load_nmt_train_data(src, trg, SRC=None, TRG=None, cut_threshold=1):
     src_count = defaultdict(lambda:0)
     trg_count = defaultdict(lambda:0)
     rep_unk   = SRC is not None and TRG is not None
@@ -106,7 +107,7 @@ def load_nmt_train_data(src, trg, SRC=None, TRG=None, cut_threshold=1, debug=Fal
     data = load_train_data(data, SRC, TRG, \
             src_count=src_count, trg_count=trg_count, \
             x_cut=cut_threshold, y_cut=cut_threshold, \
-            debug=debug, replace_unknown=rep_unk)
+            replace_unknown=rep_unk)
     
     # Return
     return SRC, TRG, data
@@ -145,4 +146,10 @@ def load_lm_data(lines, SRC=None, cut_threshold=1):
             replace_unknown=replace_unk)
 
     return SRC, data
+
+def load_lm_gen_data(lines, SRC):
+    def preprocessing(line):
+        return ["<s>"] + line.strip().split() + [SRC.eos()]
+ 
+    return load_test_data(lines, SRC, preprocessing)
 

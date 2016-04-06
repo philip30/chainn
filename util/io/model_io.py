@@ -73,7 +73,7 @@ class ModelFile:
         number = int(self.read())
         for i in range(number):
             line = self.read().split("\t")
-            dct[line[0]][line[1]] = float(line[2])
+            dct[int(line[0])][int(line[1])] = float(line[2])
 
     # Chainer Link Write
     def write_embed(self, f):
@@ -93,35 +93,30 @@ class ModelFile:
 
     # Chainer Link Read
     def read_embed(self, f):
-        UF.trace("Reading Embed", debug_level=1)
         self.read_matrix(f.W, float)
 
     def read_linear(self, f):
-        UF.trace("Reading Linear", debug_level=1)
         self.read_matrix(f.W, float)
         self.read_vector(f.b, float)
 
     def read_lstm(self, f):
-        UF.trace("Reading LSTM", debug_level=1)
         self.read_matrix(f.upward.W, float)
         self.read_vector(f.upward.b, float)
         self.read_matrix(f.lateral.W, float)
 
     def read_linter(self, f):
-        UF.trace("Reading Linear Interpolation", debug_level=1)
         f.W.data[...] = float(self.read()) 
 
     def get_file_pointer(self):
         return self.__fp
 
     def read_param_list(self, param):
-        UF.trace("Reading Param List", debug_level=1)
         for i, item in enumerate(param):
             if type(item) == Linear:
                 self.read_linear(param[i])
             elif type(item) == EmbedID:
                 self.read_embed(param[i])
-            elif type(item) == LSTM or type(item) == chainn.link.LSTM:
+            elif type(item) == LSTM:
                 self.read_lstm(param[i])
             elif type(item) == LinearInterpolation:
                 self.read_linter(param[i])
@@ -136,7 +131,7 @@ class ModelFile:
                 self.write_linear(item)
             elif type(item) == EmbedID:
                 self.write_embed(item)
-            elif type(item) == LSTM or type(item) == chainn.link.LSTM:
+            elif type(item) == LSTM:
                 self.write_lstm(item)
             elif type(item) == LinearInterpolation:
                 self.write_linter(item)
@@ -154,7 +149,6 @@ class ModelFile:
             raise NotImplementedError(type(f))
 
     def read_activation(self):
-        UF.trace("Reading Activation", debug_level=1)
         line = self.read()
         if line == "tanh": return F.tanh
         elif line == "relu": return F.relu
@@ -173,7 +167,6 @@ class ModelFile:
             raise NotImplementedError(type(opt))
 
     def read_optimizer_state(self):
-        UF.trace("Reading Optimizer State", debug_level=1)
         line = self.read().split("\t")
         opt = None
         if line[0] == "sgd":

@@ -38,13 +38,18 @@ class TestCase(unittest.TestCase):
             self.assertLinearEqual(xi, yi)
         elif type(xi) == EmbedID:
             self.assertEmbedEqual(xi, yi)
-        elif type(xi) == LSTM or type(xi) == chainn.link.lstm.LSTM:
+        elif type(xi) == LSTM:
             self.assertLSTMEqual(xi, yi)
         elif issubclass(xi.__class__, ChainList):
             self.assertChainListEqual(xi, yi)
         else:
             raise NotImplementedError()
  
+    def assertDctEqual(self, x, y):
+        self.assertEqual(len(x), len(y))
+        for xi in x:
+            self.assertTrue(xi in y)
+            self.assertEqual(list(x[xi]), list(y[xi]))
 
     def assertLinearEqual(self, x, y):
         self.assertMatrixEqual(x.W.data, y.W.data)

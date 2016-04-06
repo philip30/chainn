@@ -1,176 +1,134 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import numpy as np
-import sys, argparse, math, gc, chainer, random
-import chainer.functions as F
+import argparse, math
 import chainn.util.functions as UF
 
-from collections import defaultdict
-from chainer import cuda, optimizer, optimizers
+from chainer import optimizers
+from chainn.util import AlignmentVisualizer
+from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
+from chainn.classifier import EncDecNMT
+from chainn.machine import ParallelTrainer
 
-from chainn.util import Vocabulary as Vocab, AlignmentVisualizer
-from chainn.util.io import ModelFile, batch_generator, load_nmt_train_data
-from chainn.model import EncDecNMT
+""" Arguments """
+parser = argparse.ArgumentParser("A trainer for NMT model.")
+positive = lambda x: UF.check_positive(x, int)
+positive_decimal = lambda x: UF.check_positive(x, float)
+# Required
+parser.add_argument("--src", type=str, required=True)
+parser.add_argument("--trg", type=str, required=True)
+parser.add_argument("--model_out", type=str, required=True)
+# Parameters
+parser.add_argument("--hidden", type=positive, default=128, help="Size of hidden layer.")
+parser.add_argument("--embed", type=positive, default=128, help="Size of embedding vector.")
+parser.add_argument("--batch", type=positive, default=512, help="Number of (src) words in batch.")
+parser.add_argument("--epoch", type=positive, default=10, help="Number of epoch to train the model.")
+parser.add_argument("--depth", type=positive, default=1, help="Depth of the network.")
+parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words in corpora to be treated as unknown.")
+parser.add_argument("--dropout", type=positive_decimal, default=0.2, help="Dropout ratio for LSTM.")
+# Configuration
+parser.add_argument("--save_len", type=positive, default=1, help="Number of iteration being done for ")
+parser.add_argument("--verbose", action="store_true", help="To output the training progress for every sentence in corpora.")
+parser.add_argument("--use_cpu", action="store_true", help="Force to use CPU.")
+parser.add_argument("--save_models", action="store_true", help="Save models for every iteration with auto enumeration.")
+parser.add_argument("--gpu", type=int, default=-1, help="Specify GPU to be used, negative for using CPU.")
+parser.add_argument("--init_model", type=str, help="Init the training weights with saved model.")
+parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn", help="Type of model being trained.")
+parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
+# Development set
+parser.add_argument("--src_dev", type=str)
+parser.add_argument("--trg_dev", type=str)
+# Attentional
+parser.add_argument("--attention_type", type=str, choices=["dot", "general", "concat"], default="dot", help="How to calculate attention layer")
+# DictAttn
+parser.add_argument("--dict",type=str, help="Tab separated trg give src dictionary")
+parser.add_argument("--dict_caching",action="store_true", help="Whether to cache the whole dictionary densely")
+parser.add_argument("--dict_method", type=str, help="Method to be used for dictionary", choices=["bias", "linear"])
+args = parser.parse_args()
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    positive = lambda x: UF.check_positive(x, int)
-    positive_decimal = lambda x: UF.check_positive(x, float)
-    # Required
-    parser.add_argument("--src", type=str, required=True)
-    parser.add_argument("--trg", type=str, required=True)
-    parser.add_argument("--model_out", type=str, required=True)
-    # Options
-    parser.add_argument("--hidden", type=positive, default=128)
-    parser.add_argument("--embed", type=positive, default=128)
-    parser.add_argument("--batch", type=positive, default=64)
-    parser.add_argument("--epoch", type=positive, default=100)
-    parser.add_argument("--depth", type=positive, default=1)
-    parser.add_argument("--lr", type=positive, default=0.01)
-    parser.add_argument("--save_len", type=positive_decimal, default=1)
-    parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--use_cpu", action="store_true")
-    parser.add_argument("--gpu", type=int, default=-1)
-    parser.add_argument("--init_model", type=str)
-    parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn")
-    parser.add_argument("--debug",action="store_true")
-    parser.add_argument("--unk_cut", type=int, default=1)
-    parser.add_argument("--seed", type=int, default=0)
-#    parser.add_argument("--dev", type=str)
-#    parser.add_argument("--dev_ref", type=str)
-    # DictAttn
-    parser.add_argument("--dict",type=str)
-    return parser.parse_args()
+""" Sanity Check """
+if args.model == "dictattn":
+    if not args.dict:
+        raise ValueError("When using dict attn, you need to specify the (--dict) lexical dictionary files.")
+else:
+    if args.dict:
+        raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
 
-def init_seed(seed):
-    if seed != 0:
-        np.random.seed(seed)
-        if hasattr(cuda, "cupy"):
-            cuda.cupy.random.seed(seed)
-        random.seed(seed)
+if args.use_cpu:
+    args.gpu = -1
 
-def main():
-    # Preparation
-    args      = check_args(parse_args())
-    
-    # init seed
-    init_seed(args.seed)
-    
-    # data
-    UF.trace("Loading corpus + dictionary")
-    with open(args.src) as src_fp:
-        with open(args.trg) as trg_fp:
-            SRC, TRG, data = load_nmt_train_data(src_fp, trg_fp, cut_threshold=args.unk_cut, debug=args.debug)
-            UF.trace("SRC size:", len(SRC))
-            UF.trace("TRG size:", len(TRG))
-    training_data = lambda: batch_generator(data, (SRC, TRG), batch_size=args.batch)
+if args.save_models:
+    args.save_len = 1
 
-#    if args.dev and args.dev_ref:
-#        with open(args.dev) as src_fp:
-#            with open(args.dev) as trg_fp:
-#                _, _, dev_data = load_nmt_train_data(src_fp, trg_fp, SRC=SRC, TRG=TRG, batch_size=args.batch, cut_threshold=args.unk_cut, debug=args.debug)
-    
-    # Setup model
-    UF.trace("Setting up classifier")
-    opt   = optimizers.Adam()
-    model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
+""" Training """
+trainer   = ParallelTrainer(args.seed, args.gpu)
+ 
+# data
+UF.trace("Loading corpus + dictionary")
+with open(args.src) as src_fp:
+    with open(args.trg) as trg_fp:
+        SRC, TRG, train_data = load_nmt_train_data(src_fp, trg_fp, cut_threshold=args.unk_cut)
+        train_data = list(batch_generator(train_data, (SRC, TRG), args.batch))
+UF.trace("SRC size:", len(SRC))
+UF.trace("TRG size:", len(TRG))
+UF.trace("Data loaded.")
 
-    # Begin Training
-    UF.trace("Begin training NMT")
-    EP         = args.epoch
-    save_ctr   = 0  # save counter
-    save_len   = args.save_len
-    prev_loss  = 150
-    prev_dev_loss = 150
-    for epoch in range(EP):
-        trained = 0
-        epoch_loss = 0
-        epoch_accuracy = 0
-        # Training from the corpus
-        UF.trace("Starting Epoch", epoch+1)
-        for src, trg in training_data():
-            accum_loss, accum_acc, output = model.train(src, trg)
-            epoch_loss += accum_loss
-            epoch_accuracy += accum_acc
-            # Reporting
-            if args.verbose:
-                report(output, src, trg, SRC, TRG, trained, epoch+1, EP)
-            trained += len(src)
-            UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])-1)) # minus the </s>
-            model.report()
-        random.shuffle(data)
-        epoch_loss /= len(data)
-        epoch_accuracy /= len(data)
-        
-        UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
-        UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
-        UF.trace("Train Accuracy:", float(epoch_accuracy))
+# dev data
+dev_data = None
+if args.src_dev and args.trg_dev:
+    with open(args.src_dev) as src_fp:
+        with open(args.trg_dev) as trg_fp:
+            UF.trace("Loading dev data")
+            _, _, dev_data = load_nmt_train_data(src_fp, trg_fp, SRC, TRG)
+            dev_data = list(batch_generator(dev_data, (SRC, TRG), args.batch))
+            UF.trace("Dev data loaded")
 
-        # Evaluating on development set
-#        if args.dev:
-#            dev_loss = 0
-#            for src, trg in dev_data:
-#                loss, _, _ = model.train(src, trg, update=False)
-#                dev_loss += loss
-#            dev_loss /= len(dev_data)
-#            UF.trace("Dev Loss:", float(prev_dev_loss), "->", float(dev_loss))
-#            UF.trace("Dev PPL :", math.exp(float(prev_dev_loss)), "->", math.exp(float(dev_loss)))
-#            prev_dev_loss = dev_loss
-#       
-        # Converge
-#        if not args.dev:
-#            if prev_loss < epoch_loss:
-#                args.lr /= 2
-#        else:
-#            if prev_dev_loss < dev_loss:
-#                args.lr /= 2
-        
-        prev_loss = epoch_loss
-        
-        # saving model
-        if (save_ctr + 1) % save_len == 0:
-            UF.trace("saving model to " + args.model_out + "...")
-            with ModelFile(open(args.model_out, "w")) as model_out:
-                model.save(model_out)
+""" Setup model """
+UF.trace("Setting up classifier")
+opt   = optimizers.Adam()
+model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
 
-        gc.collect()
-        save_ctr += 1
-   
-    if save_ctr % save_len != 0:
-        UF.trace("saving model to " + args.model_out + "...")
-        with ModelFile(open(args.model_out, "w")) as model_out:
-            model.save(model_out)
-        UF.trace("training complete!")
+""" Training Callback """
+def onEpochStart(epoch):
+    UF.trace("Starting Epoch", epoch+1)
 
-def report(output, src, trg, src_voc, trg_voc, trained, epoch, max_epoch):
-    SRC, TRG = src_voc, trg_voc
+def report(output, src, trg, trained, epoch):
     for index in range(len(src)):
         source   = SRC.str_rpr(src[index])
         ref      = TRG.str_rpr(trg[index])
         out      = TRG.str_rpr(output.y[index])
-        UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch, max_epoch,\
-                index+trained, source, out, ref))
-   
-#    if output.a is not None:
-#        AlignmentVisualizer.print(output.a, trained, src, output.y, SRC, TRG, sys.stderr)
+        UF.trace("Epoch (%d/%d) sample %d:\n\tSRC: %s\n\tOUT: %s\n\tREF: %s" % (epoch+1, args.epoch, index+trained, source, out, ref))
 
-def check_args(args):
-    if args.model == "dictattn":
-        if not args.dict:
-            raise ValueError("When using dict attn, you need to specify the (--dict) lexical dictionary files.")
-    else:
-        if args.dict:
-            raise ValueError("When not using dict attn, you do not need to specify the dictionary.")
-   
-#    # args.dev exor args.dev_ref
-#    if (args.dev and not args.dev_ref) or (not args.dev and args.dev_ref):
-#        raise ValueError("Need to specify both --dev and --dev_ref together")
+def onBatchUpdate(output, src, trg, trained, epoch, accum_loss):
+    if args.verbose:
+        report(output, src, trg, trained, epoch)
+    UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])-1)) # minus the last </s>
 
-    if args.use_cpu:
-        args.gpu = -1
+def save_model(epoch):
+    out_file = args.model_out
+    if args.save_models:
+        out_file += "-" + str(epoch)
+    UF.trace("saving model to " + out_file + "...")
+    with ModelFile(open(out_file, "w")) as model_out:
+        model.save(model_out)
 
-    return args
+def onEpochUpdate(epoch_loss, prev_loss, epoch):
+    UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
+    UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
 
-if __name__ == "__main__":
-    main()
+    if dev_data is not None:
+        dev_loss = trainer.eval(dev_data, model)
+        UF.trace("Dev Loss:", float(dev_loss))
+        UF.trace("Dev PPL:", math.exp(float(dev_loss)))
+
+    # saving model
+    if args.save_models and (epoch + 1) % args.save_len == 0:
+        save_model(epoch)        
+
+def onTrainingFinish(epoch):
+    if not args.save_models or epoch % args.save_len != 0:
+        save_model(epoch)
+    UF.trace("training complete!")
+
+""" Execute Training loop """
+trainer.train(train_data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish)
 

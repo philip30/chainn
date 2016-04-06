@@ -2,6 +2,7 @@ from collections import defaultdict
 
 UNK = "<UNK>"
 EOS = "<EOS>"
+STUFF = "{*}"
 
 class Vocabulary(object):
     # Overloading methods
@@ -14,6 +15,7 @@ class Vocabulary(object):
 
         if eos:
             self[EOS]
+        self[STUFF]
 
     def __getitem__(self, index):
         id = self._data[index]
@@ -51,8 +53,8 @@ class Vocabulary(object):
         ret = []
         for tok in data:
             ret.append(self.tok_rpr(tok))
-            ret.append(EOS)
-            ret = ret[:ret.index(EOS)]
+        ret.append(EOS)
+        ret = ret[:ret.index(EOS)]
         return " ".join(ret)
 
     def tok_rpr(self, wid):
@@ -71,7 +73,10 @@ class Vocabulary(object):
 
     def eos_id(self):
         return self[EOS]
-    
+
+    def stuff_id(self):
+        return self[STUFF]
+
     def unk(self):
         return UNK
 

@@ -8,7 +8,7 @@ from chainer import Variable, ChainList
 # Chainn
 from chainn import functions as UF
 from chainn.link import StackLSTM
-from chainn.model.basic import ChainnBasicModel
+from chainn.model.nmt import EncoderDecoder
 from chainn.util import DecodingOutput
 
 # By Philip Arthur (philip.arthur30@gmail.com)
@@ -16,24 +16,28 @@ from chainn.util import DecodingOutput
 # (Luong et al., 2015)
 # http://arxiv.org/pdf/1508.04025v5.pdf
 
-class Attentional(ChainnBasicModel):
+class Attentional(EncoderDecoder):
     name = "attn" 
     
+    def __init__(self, src_voc, trg_voc, args, *other, **kwargs):
+        self._attention_type = args.attention_type if hasattr(args, "attention_type") else "dot"
+        super(Attentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
+
     def _construct_model(self, input, output, hidden, depth, embed):
         I, O, E, H = input, output, embed, hidden
-        self.encoder   = Encoder(I, E, H, depth)
-        self.attention = AttentionLayer()
-        self.decoder   = Decoder(O, E, H, depth)
+        self.encoder   = Encoder(I, E, H, depth, self._dropout)
+        self.attention = AttentionLayer(H, self._attention_type)
+        self.decoder   = Decoder(O, E, H, depth, self._dropout)
         return [self.encoder, self.attention, self.decoder]
     
     # Encode all the words in the input sentence
-    def reset_state(self, x_data, y_data, is_train=False, *args, **kwargs):
+    def reset_state(self, x_data, is_train=False, *args, **kwargs):
         self.s, s_n = self.encoder(x_data, is_train=is_train, xp=self._xp)
         self.h = self.decoder.reset(s_n, is_train=is_train)
         return self.s
     
     # Produce one target word
-    def __call__ (self, x_data, train_ref=None, is_train=False, eos_disc=0.0, *args, **kwargs):
+    def __call__ (self, x_data, is_train=False, eos_disc=0.0, *args, **kwargs):
         # Calculate alignment weights between hidden state and source vector context
         a  = self.attention(self.h, self.s)
         
@@ -41,42 +45,36 @@ class Attentional(ChainnBasicModel):
         yp = self.decoder(self.s, a, self.h)
         
         # To adjust brevity score during decoding
-        if train_ref is None and eos_disc != 0.0:
+        if eos_disc != 0.0:
             yp = self._adjust_brevity(yp, eos_disc)
 
         # Enhance y
         y = self._additional_score(yp, a, x_data)
         
-        # Conceive the next state
-        self.h = self._decode_next(y, train_ref=train_ref, is_train=is_train)
         return DecodingOutput(y, a)
-
-    # Adjusting brevity during decoding
-    def _adjust_brevity(self, yp, eos_disc):
-        v = self._xp.ones(len(self._trg_voc), dtype=np.float32)
-        v[self._trg_voc.eos_id()] = 1-eos_disc
-        v  = F.broadcast_to(Variable(v), yp.data.shape)
-        return yp * v
-
-    # Update the RNN state 
-    def _decode_next(self, y, train_ref, is_train=False):
-        if train_ref is not None and is_train:
-            # Training
-            wt = train_ref
-        else:
-            # Testing
-            wt = Variable(self._xp.array(UF.argmax(y.data), dtype=np.int32))
-        return self.decoder.update(wt, is_train=is_train)
 
     # Whether we want to change y score by linguistic resources?
     def _additional_score(self, y, a, x_data):
         return y
 
+    def clean_state(self):
+        self.h = None
+        self.s = None
+
+    @staticmethod
+    def _load_details(fp, args, xp, SRC, TRG):
+        super(Attentional, Attentional)._load_details(fp, args, xp, SRC, TRG)
+        args.attention_type = fp.read()
+
+    def _save_details(self, fp):
+        super(Attentional, self)._save_details(fp)
+        fp.write(self._attention_type)
+
 class Encoder(ChainList):
-    def __init__(self, I, E, H, depth):
+    def __init__(self, I, E, H, depth, dropout_ratio):
         self.IE = L.EmbedID(I, E)
-        self.EF = StackLSTM(E, H, depth)
-        self.EB = StackLSTM(E, H, depth)
+        self.EF = StackLSTM(E, H, depth, dropout_ratio)
+        self.EB = StackLSTM(E, H, depth, dropout_ratio)
         self.AE = L.Linear(2*H, H)
         self.H  = H
         super(Encoder, self).__init__(self.IE, self.EF, self.EB, self.AE)
@@ -111,18 +109,43 @@ class Encoder(ChainList):
         return S, s_j
 
 class AttentionLayer(ChainList):
-    def __init__(self):
-        super(AttentionLayer, self).__init__()
-    
+    def __init__(self, hidden, attn_type):
+        self._type = attn_type
+        param = []
+        if attn_type == "general":
+            self.WA = L.Linear(hidden , hidden)
+            param.append(self.WA)
+        elif attn_type == "concat":
+            self.WA = L.Linear(2 * hidden , 1)
+            param.append(self.WA)
+        super(AttentionLayer, self).__init__(*param)
+        
     def __call__(self, h, s):
-        return self._dot(h, s)
+        if self._type == "dot":
+            return self._dot(h, s)
+        elif self._type == "general":
+            return self._general(h, s)
+        elif self._type == "concat":
+            return self._concat(h, s)
+        else:
+            raise Exception("Unrecognized type:", self._type) 
+    
+    def _general(self, h, s):
+        batch, src_len, hidden = s.data.shape
+        param_s = F.reshape(self.WA(F.reshape(s, (batch * src_len, hidden))), (batch, src_len, hidden))
+        return self._dot(h, param_s)
 
+    def _concat(self, h, s):
+        batch, src_len, hidden = s.data.shape
+        concat_h  = F.reshape(F.concat(F.broadcast(F.expand_dims(h, 1), s), axis=1), (batch * src_len, 2* hidden))
+        return F.softmax(F.reshape(self.WA(concat_h), (batch, src_len)))
+                
     def _dot(self, h, s):
         return F.softmax(F.batch_matmul(s, h))
 
 class Decoder(ChainList):
-    def __init__(self, O, E, H, depth):
-        self.DF = StackLSTM(E, H, depth)
+    def __init__(self, O, E, H, depth, dropout_ratio):
+        self.DF = StackLSTM(E, H, depth, dropout_ratio)
         self.WS = L.Linear(H, O)
         self.WC = L.Linear(2*H, H)
         self.OE = L.EmbedID(O, E)
@@ -130,9 +153,7 @@ class Decoder(ChainList):
         super(Decoder, self).__init__(self.DF, self.WS, self.WC, self.OE, self.HE)
     
     def __call__(self, s, a, h):
-        B = len(s.data)
-        H = len(h.data[0])
-        c = F.reshape(F.batch_matmul(a, s, transa=True), (B, H))
+        c = F.reshape(F.batch_matmul(a, s, transa=True), h.data.shape)
         ht = F.tanh(self.WC(F.concat((h, c), axis=1)))
         return self.WS(ht)
 
