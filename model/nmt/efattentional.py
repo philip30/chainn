@@ -117,6 +117,7 @@ class AttentionLayer(ChainList):
             param.append(self.WA)
         elif attn_type == "concat":
             self.WA = L.Linear(2 * hidden , 1)
+            param.append(self.WA)
         super(AttentionLayer, self).__init__(*param)
         
     def __call__(self, h, s):

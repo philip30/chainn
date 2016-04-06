@@ -11,7 +11,7 @@ class RecurrentLSTM(ChainnBasicModel):
         self.embed  = L.EmbedID(input, embed)
         self.inner  = StackLSTM(embed, hidden, depth, self._dropout)
         self.output = L.Linear(hidden, output)
-        return [self.embed, self.inner]
+        return [self.embed, self.inner, self.output]
 
     def reset_state(self, *args, **kwargs):
         self.inner.reset_state()
