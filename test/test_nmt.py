@@ -103,9 +103,14 @@ class TestNMT(TestCase):
     def test_NMT_attn_concat(self):
         self.run("attn", "--attention_type concat")
 
+    def test_NMT_dictattn_bias(self):
+        self.run("dictattn", "--dict test/data/dict.txt --dict_method bias")
+    
+    def test_NMT_dictattn_linear(self):
+        self.run("dictattn", "--dict test/data/dict.txt --dict_method linear")
+    
+    def test_NMT_dictattn_caching(self):
+        self.run("dictattn", "--dict test/data/dict.txt --dict_caching")
 
-    def test_NMT_dictattn(self):
-        self.run("dictattn", "--dict test/data/dict.txt")
-        
 if __name__ == "__main__":
     unittest.main()

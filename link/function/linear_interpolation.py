@@ -20,7 +20,7 @@ class LinearInterpolationFunction(chainer.function.Function):
         gw = out * (x - y)
         gx = out * W
         gy = out * (1-W)
-        ret = gw.sum().sum()
+        ret = gw.sum().sum().reshape((1,))
         return ret, gx, gy
 
 def linear_interpolation(W, x, y):
