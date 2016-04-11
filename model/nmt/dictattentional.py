@@ -22,11 +22,20 @@ class DictAttentional(Attentional):
     name = "dictattn" 
 
     def __init__(self, src_voc, trg_voc, args, *other, **kwargs):
-        super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._caching = args.dict_caching if hasattr(args, "dict_caching") else False
-        self._dict    = self._load_dictionary(args.dict, src_voc, trg_voc)
         self._method  = args.dict_method if hasattr(args, "dict_method") else "bias"
+        super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
+        self._dict    = self._load_dictionary(args.dict, src_voc, trg_voc)
 
+    def _construct_model(self, input, output, hidden, depth, embed):
+        parent_list = super(DictAttentional, self)._construct_model(input, output, hidden, depth, embed)
+        
+        if self._method == "linear":
+            self.LI = LinearInterpolation()
+            parent_list.append(self.LI)
+        
+        return parent_list
+ 
     def reset_state(self, src, *args, **kwargs):
         SRC = self._src_voc
         TRG = self._trg_voc
@@ -100,7 +109,12 @@ class DictAttentional(Attentional):
         y_dict = F.reshape(F.batch_matmul(a, self.prob_dict, transa=True), (batch_size, vocab_size))
         
         # Using dict prob
-        yp = y + F.log(eps + y_dict)
+        if self._method == "bias":
+            yp = y + F.log(eps + y_dict)
+        elif self._method == "linear":
+            yp = F.log(eps + self.LI(F.softmax(y), y_dict))
+        else:
+            raise ValueError("Unrecognized dictionary method:", self._method)
         return yp
 
     @staticmethod

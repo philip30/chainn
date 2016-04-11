@@ -42,7 +42,7 @@ parser.add_argument("--attention_type", type=str, choices=["dot", "general", "co
 # DictAttn
 parser.add_argument("--dict",type=str, help="Tab separated trg give src dictionary")
 parser.add_argument("--dict_caching",action="store_true", help="Whether to cache the whole dictionary densely")
-parser.add_argument("--dict_method", type=str, help="Method to be used for dictionary", choices=["bias", "linear"])
+parser.add_argument("--dict_method", type=str, help="Method to be used for dictionary", choices=["bias", "linear"], default="bias")
 args = parser.parse_args()
 
 """ Sanity Check """

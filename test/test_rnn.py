@@ -42,7 +42,7 @@ class TestRecurrentLSTM(TestCase):
         self.assertModelEqual(self.model, model1)
 
     def test_init_size(self):
-        self.assertEqual(len(self.model) + len(self.model.inner) + 1, 4) # Input, embed, hiddenx1, output
+        self.assertEqual(len(self.model.inner) + 2, 3) # embed, hiddenx1, output
 
     def test_depth_size(self):
         args = Args()
@@ -52,7 +52,7 @@ class TestRecurrentLSTM(TestCase):
         args.embed = 1
         args.hidden = 1
         model = self.Model(Vocabulary(), Vocabulary(), args)
-        self.assertEqual(len(model) + len(model.inner) + 1, 8) # Input, Embed, 5*Hidden, Output
+        self.assertEqual(len(model.inner) + 2, 7) # Embed, 5*Hidden, Output
 
 if __name__ == "__main__":
     unittest.main()
