@@ -1,7 +1,7 @@
 
 import chainer.links as L
 from chainn.model import ChainnBasicModel
-from chainn.link import StackLSTM
+from chainn.chainer_component.links import StackLSTM
 
 class RecurrentLSTM(ChainnBasicModel):
     name = "lstm"

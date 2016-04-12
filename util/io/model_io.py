@@ -1,7 +1,6 @@
 import chainn
 import chainer
 import chainer.functions as F
-from chainn.util import functions as UF
 import numpy as np
 
 from chainer import optimizers, ChainList, Variable
@@ -9,7 +8,8 @@ from chainer.links.connection.linear import Linear
 from chainer.links.connection.embed_id import EmbedID
 from chainer.links.connection.lstm import LSTM
 
-from chainn.link import LinearInterpolation, StackLSTM
+from chainn.chainer_component.functions import LinearInterpolation
+from chainn.chainer_component.links import StackLSTM
 
 from collections import defaultdict
 

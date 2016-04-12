@@ -9,7 +9,7 @@ from chainer import Variable, ChainList
 from chainn import functions as UF
 from chainn.model import ChainnBasicModel
 from chainn.util import DecodingOutput
-from chainn.link import StackLSTM
+from chainn.chainer_component.links import StackLSTM
 
 # By Philip Arthur (philip.arthur30@gmail.com)
 # This program is an implementation of Sequence to Sequence Learning with Neural Networks
