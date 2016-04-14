@@ -54,5 +54,5 @@ class ParallelTrainer:
         for src, trg in dev_data:
             loss, _ = model.train(src, trg, learn=False)
             accum_loss += loss
-        return accum_loss
+        return accum_loss / len(dev_data)
 
