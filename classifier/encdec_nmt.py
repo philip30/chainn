@@ -9,6 +9,7 @@ import chainer.functions as F
 # Chainn
 import chainn.util.functions as UF
 from chainn.classifier import ChainnClassifier
+from chainn.chainer_component.functions import cross_entropy
 from chainn.model.nmt import EncoderDecoder, Attentional, DictAttentional
 from chainn.util import DecodingOutput
 from chainn.util.io import ModelFile
@@ -32,7 +33,7 @@ class EncDecNMT(ChainnClassifier):
             output    = np.zeros((batch_size, gen_limit), dtype=np.float32)
             alignment = np.zeros((batch_size, gen_limit, src_len), dtype=np.float32)
         
-        accum_loss = 0
+        accum_loss = self.zero(xp)
         # Decoding
         for j in range(gen_limit):
             s_t         = Variable(xp.array([y_data[i][j] for i in range(len(y_data))], dtype=np.int32))
@@ -87,7 +88,8 @@ class EncDecNMT(ChainnClassifier):
         return DecodingOutput(output, alignment)
 
     def _calculate_loss(self, y, ground_truth):
-        return F.softmax_cross_entropy(y, ground_truth)
+        loss = cross_entropy(y, ground_truth)
+        return loss
 
     # Update the RNN state 
     def _select_update(self, y, train_ref, is_train):

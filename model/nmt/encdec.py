@@ -39,6 +39,7 @@ class EncoderDecoder(ChainnBasicModel):
         # To adjust brevity score during decoding
         if not is_train and eos_disc != 0.0:
             y = self._adjust_brevity(yp, eos_disc)
+        y = F.softmax(y)
 
         return DecodingOutput(y)
 

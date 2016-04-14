@@ -2,9 +2,10 @@ import numpy as np
 import math
 
 import chainer.functions as F
-from chainer import cuda
+from chainer import cuda, Variable
 
 from chainn import functions as UF
+from chainn.chainer_component.functions import cross_entropy
 from chainn.util.io import ModelFile
 
 class ChainnClassifier(object):
@@ -24,12 +25,13 @@ class ChainnClassifier(object):
     
     def train(self, x_data, y_data, learn=True, *args, **kwargs):
         accum_loss, output = self._train(x_data, y_data, not learn, *args, **kwargs)
-        if learn and not math.isnan(float(accum_loss.data)):
-            self._model.zerograds()
-            accum_loss.backward()
-            self._opt.update()
-        else:
-            UF.trace("Warning: LOSS is nan, ignoring!")
+        if learn:
+            if not math.isnan(float(accum_loss.data)):
+                self._model.zerograds()
+                accum_loss.backward()
+                self._opt.update()
+            else:
+                UF.trace("Warning: LOSS is nan, ignoring!")
         return accum_loss.data, output
 
     def classify(self, x_data, *args, **kwargs):
@@ -42,8 +44,11 @@ class ChainnClassifier(object):
         return self._model._src_voc, self._model._trg_voc
 
     def _calculate_loss(self, y, ground_truth):
-        return F.softmax_cross_entropy(y, ground_truth)
- 
+        return cross_entropy(y, ground_truth)
+    
+    def zero(self, xp):
+        return Variable(xp.zeros((), dtype=np.float32))
+
     def report(self):
         pass
     
