@@ -35,7 +35,7 @@ class ParallelTextClassifier(ChainnClassifier):
             words  = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
             labels = Variable(xp.array([y_data[i][j] for i in range(batch_size)], dtype=np.int32))
             y      = self._model(words, labels, is_train=is_train)
-            accum_loss += self._calculate_loss(y, labels)
+            accum_loss += self._calculate_loss(y, labels, is_train)
             
             if self._collect_output:
                 collect_output(j, output, y)
@@ -71,7 +71,7 @@ class ParallelTextClassifier(ChainnClassifier):
             words  = Variable(xp.array([x_data[i][j] for i in range(batch_size)], dtype=np.int32))
             labels = Variable(xp.array([y_data[i][j] for i in range(batch_size)], dtype=np.int32))
             y      = self._model(words, labels)
-            accum_loss += self._calculate_loss(y, labels)
+            accum_loss += self._calculate_loss(y, labels, False)
 
         return accum_loss / src_len
 

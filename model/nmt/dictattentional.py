@@ -11,7 +11,7 @@ from chainer import Variable, cuda
 
 # Chainn
 from chainn import functions as UF
-from chainn.chainer_component.functions import LinearInterpolation
+from chainn.chainer_component.links import LinearInterpolation
 from chainn.model import ChainnBasicModel
 from chainn.model.nmt import Attentional
 

@@ -43,8 +43,8 @@ class ChainnClassifier(object):
     def get_vocabularies(self):
         return self._model._src_voc, self._model._trg_voc
 
-    def _calculate_loss(self, y, ground_truth):
-        return cross_entropy(y, ground_truth)
+    def _calculate_loss(self, y, ground_truth, is_train):
+        return cross_entropy(y, ground_truth, cache_score=is_train)
     
     def zero(self, xp):
         return Variable(xp.zeros((), dtype=np.float32))

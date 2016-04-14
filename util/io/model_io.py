@@ -8,7 +8,7 @@ from chainer.links.connection.linear import Linear
 from chainer.links.connection.embed_id import EmbedID
 from chainer.links.connection.lstm import LSTM
 
-from chainn.chainer_component.functions import LinearInterpolation
+from chainn.chainer_component.links import LinearInterpolation
 from chainn.chainer_component.links import StackLSTM
 
 from collections import defaultdict

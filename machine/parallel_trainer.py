@@ -52,7 +52,10 @@ class ParallelTrainer:
     def eval(self, dev_data, model):
         accum_loss = 0
         for src, trg in dev_data:
+            print("c")
             loss, _ = model.train(src, trg, learn=False)
-            accum_loss += loss
+            accum_loss += float(loss.data)
+            loss.unchain_backward()
+            gc.collect()
         return accum_loss / len(dev_data)
 
