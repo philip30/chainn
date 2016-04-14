@@ -69,7 +69,7 @@ def onDecodingFinish(data, output):
             print(TRG.str_rpr(out))
     elif op == "cppl":
         UF.trace("Corpus PPL:", PPL(output))
-        print(output.data)
+        print(PPL(output))
 
 tester = Tester(load_lm_gen_data, VOC, onDecodingStart, onBatchUpdate, onSingleUpdate, onDecodingFinish, batch=args.batch, out_vocab=VOC, options=decoding_options)
 if op == "sppl" or op == "cppl":
