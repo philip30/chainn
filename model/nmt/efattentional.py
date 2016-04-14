@@ -49,13 +49,15 @@ class Attentional(EncoderDecoder):
             yp = self._adjust_brevity(yp, eos_disc)
 
         # Enhance y
-        y = self._additional_score(yp, a, x_data)
-        
+        y, is_prob = self._additional_score(yp, a, x_data)
+        if not is_prob:
+            y = F.softmax(y)
+
         return DecodingOutput(y, a)
 
     # Whether we want to change y score by linguistic resources?
     def _additional_score(self, y, a, x_data):
-        return y
+        return y, False
 
     def clean_state(self):
         self.h = None

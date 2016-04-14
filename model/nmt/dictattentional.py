@@ -107,15 +107,17 @@ class DictAttentional(Attentional):
         src_len    = len(self.prob_dict)
         # Calculating dict prob
         y_dict = F.reshape(F.batch_matmul(a, self.prob_dict, transa=True), (batch_size, vocab_size))
-        
+        is_prob = False
+
         # Using dict prob
         if self._method == "bias":
             yp = y + F.log(eps + y_dict)
         elif self._method == "linear":
-            yp = F.log(eps + self.LI(F.softmax(y), y_dict))
+            yp = self.LI(F.softmax(y), y_dict)
+            is_prob = True
         else:
             raise ValueError("Unrecognized dictionary method:", self._method)
-        return yp
+        return yp, is_prob
 
     @staticmethod
     def _load_details(fp, args, xp, SRC, TRG):
