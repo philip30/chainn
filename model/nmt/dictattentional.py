@@ -129,6 +129,8 @@ class DictAttentional(Attentional):
         args.dict = fp.read()
         args.dict_caching = fp.read() == "True"
         args.dict_method  = fp.read()
+        if args.dict_method == "None":
+            args.dict_method = "bias"
 
     def _save_details(self, fp):
         super(DictAttentional, self)._save_details(fp)
