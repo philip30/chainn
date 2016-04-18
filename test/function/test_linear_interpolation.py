@@ -13,7 +13,7 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
-from chainn.chainer_component.links.linear_interpolation import LinearInterpolation
+from chainn.chainer_component.links.linear_interpolation import LinearInterpolation, sigmoid
 
 
 class TestLinearInterpolation(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestLinearInterpolation(unittest.TestCase):
         self.w = self.link.W.data.reshape(())
         self.gy = numpy.random.uniform(
             -1, 1, (shape)).astype(numpy.float32)
-        self.y = self.w * self.x1 + (1-self.w) * self.x2
+        self.y = sigmoid(self.w) * self.x1 + (1-sigmoid(self.w)) * self.x2
 
     def check_forward(self, x1_data, x2_data):
         x1 = chainer.Variable(x1_data)
