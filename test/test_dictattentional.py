@@ -37,7 +37,7 @@ class TestDictAttn(TestCase):
         self.TRG = TRG
 
     def exec_dict(self, model):
-        for src, trg in batch_generator(self.data, (self.SRC, self.TRG)):
+        for src, trg in batch_generator(self.data, (self.SRC, self.TRG), batch_size=2):
             model.reset_state(src, trg)
             for j in range(len(trg[0])):
                 trg_j = Variable(np.array([trg[i][j] for i in range(len(trg))], dtype=np.int32))

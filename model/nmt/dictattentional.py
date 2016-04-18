@@ -56,7 +56,7 @@ class DictAttentional(Attentional):
                     else:
                         prob_dict[i][j] = self.calculate_local_cache_dict(src_word, dct)
                     
-        self.prob_dict = Variable(xp.array(prob_dict))
+        self.prob_dict = xp.array(prob_dict)
         return super(DictAttentional, self).reset_state(src, *args, **kwargs) 
     
     def clean_state(self):
@@ -75,8 +75,11 @@ class DictAttentional(Attentional):
 
     def calculate_dict_vector(self, dct):
         ret_prob = np.zeros((self._output), dtype=np.float32)
+        sum_prob = 0
         for trg_word, p in dct.items():
             ret_prob[trg_word] += p
+            sum_prob += p
+       
         return ret_prob
 
     def _compile_dictionary(self, dct):
@@ -106,14 +109,15 @@ class DictAttentional(Attentional):
         xp         = self._xp
         src_len    = len(self.prob_dict)
         # Calculating dict prob
-        y_dict = F.reshape(F.batch_matmul(a, self.prob_dict, transa=True), (batch_size, vocab_size))
+        y_dict = F.reshape(F.batch_matmul(a, Variable(self.prob_dict), transa=True), (batch_size, vocab_size))
+        inv_sum, _ = F.broadcast(F.reshape(1/F.sum(y_dict, axis=1), (batch_size, 1)), y_dict)
+        y_dict = inv_sum * y_dict
         is_prob = False
-
         # Using dict prob
         if self._method == "bias":
             yp = y + F.log(eps + y_dict)
         elif self._method == "linear":
-            yp = self.LI(F.softmax(y), y_dict)
+            yp = self.LI(y_dict, F.softmax(y))
             is_prob = True
         else:
             raise ValueError("Unrecognized dictionary method:", self._method)
