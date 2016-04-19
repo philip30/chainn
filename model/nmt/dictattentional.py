@@ -59,7 +59,7 @@ class DictAttentional(Attentional):
                 else:
                     prob_dict[i][j] = self.unk_src_dict(self._src_voc, self._output)
         
-        self.prob_dict = xp.array(prob_dict)
+        self.prob_dict = Variable(xp.array(prob_dict))
         return super(DictAttentional, self).reset_state(src, *args, **kwargs) 
 
     def clean_state(self):
@@ -118,7 +118,7 @@ class DictAttentional(Attentional):
         xp         = self._xp
         src_len    = len(self.prob_dict)
         # Calculating dict prob
-        y_dict = F.reshape(F.batch_matmul(Variable(self.prob_dict), a, transa=True), (batch_size, vocab_size))
+        y_dict = F.reshape(F.batch_matmul(self.prob_dict, a, transa=True), (batch_size, vocab_size))
         is_prob = False
         # Using dict prob
         if self._method == "bias":
