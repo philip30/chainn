@@ -24,6 +24,7 @@ class DictAttentional(Attentional):
     def __init__(self, src_voc, trg_voc, args, *other, **kwargs):
         self._caching = args.dict_caching if hasattr(args, "dict_caching") else False
         self._method  = args.dict_method if hasattr(args, "dict_method") else "bias"
+        self._unk_src = None
         super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
         self._dict    = self._load_dictionary(args.dict, src_voc, trg_voc)
 
@@ -55,10 +56,12 @@ class DictAttentional(Attentional):
                         prob_dict[i][j] = self.calculate_global_cache_dict(src_word)
                     else:
                         prob_dict[i][j] = self.calculate_local_cache_dict(src_word, dct)
-                    
-        self.prob_dict = xp.array(prob_dict)
+                else:
+                    prob_dict[i][j] = self.unk_src_dict(self._src_voc, self._output)
+        
+        self.prob_dict = Variable(xp.array(prob_dict))
         return super(DictAttentional, self).reset_state(src, *args, **kwargs) 
-    
+
     def clean_state(self):
         self.prob_dict = None
 
@@ -79,8 +82,14 @@ class DictAttentional(Attentional):
         for trg_word, p in dct.items():
             ret_prob[trg_word] += p
             sum_prob += p
-       
+        ret_prob[self._src_voc.unk_id()] = 1.0 - sum_prob
         return ret_prob
+
+    def unk_src_dict(self, src_dict, output_size):
+        if self._unk_src is None:
+            self._unk_src = np.zeros((self._output), dtype=np.float32)
+            self._unk_src[src_dict.unk_id()] = 1.0
+        return self._unk_src
 
     def _compile_dictionary(self, dct):
         ret = {}
@@ -109,9 +118,7 @@ class DictAttentional(Attentional):
         xp         = self._xp
         src_len    = len(self.prob_dict)
         # Calculating dict prob
-        y_dict = F.reshape(F.batch_matmul(a, Variable(self.prob_dict), transa=True), (batch_size, vocab_size))
-        inv_sum, _ = F.broadcast(F.reshape(1/F.sum(y_dict, axis=1), (batch_size, 1)), y_dict)
-        y_dict = inv_sum * y_dict
+        y_dict = F.reshape(F.batch_matmul(self.prob_dict, a, transa=True), (batch_size, vocab_size))
         is_prob = False
         # Using dict prob
         if self._method == "bias":
