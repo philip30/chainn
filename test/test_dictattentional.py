@@ -5,7 +5,7 @@ import numpy as np
 from chainer import optimizers, Variable, cuda
 
 from chainn.util import Vocabulary
-from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
+from chainn.util.io import ModelSerializer, load_nmt_train_data, batch_generator
 from chainn.test import TestCase
 from chainn.classifier import EncDecNMT
 from chainn.model.nmt import DictAttentional
@@ -56,14 +56,11 @@ class TestDictAttn(TestCase):
 
         model_out = "/tmp/model-dictattn.temp"
 
-        with ModelFile(open(model_out, "w")) as fp:
-            model.save(fp)
-       
+        serializer = ModelSerializer(model_out)
+        serializer._init_dir()
+        serializer._write_model(model)
         args = InitArgs(model_out)
-
-        with ModelFile(open(model_out)) as fp:
-            name = fp.read()
-            model1 = model.load(fp, DictAttentional, args, np)
+        model1 = serializer._read_model(DictAttentional, np)
     
         self.assertModelEqual(model, model1)
         self.assertDctEqual(model._dict, model1._dict)

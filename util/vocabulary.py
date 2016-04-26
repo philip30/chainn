@@ -63,11 +63,6 @@ class Vocabulary(object):
         else:
             return UNK
 
-    def save(self, fp):
-        fp.write(len(self._data))
-        for word, index in sorted(self._data.items(), key=lambda x:x[0]):
-            fp.write(str(index) + "\t" + str(word))
-    
     def unk_id(self):
         return self[UNK]
 
@@ -83,12 +78,4 @@ class Vocabulary(object):
     def eos(self):
         return EOS
 
-    @staticmethod
-    def load(fp):
-        size = int(fp.read())
-        self = Vocabulary(unk=False,eos=False)
-        for i in range(size):
-            index, word = fp.read().strip().split("\t")
-            self[word] = int(index)
-        return self
 

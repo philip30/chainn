@@ -3,7 +3,7 @@ import numpy as np
 from chainer import optimizers
 from chainn.test import TestCase
 from chainn.util import Vocabulary
-from chainn.util.io import load_nmt_train_data, ModelFile
+from chainn.util.io import load_nmt_train_data, ModelSerializer
 from chainn.classifier import EncDecNMT
 
 class Args(object):
@@ -39,8 +39,8 @@ class TestBeam(TestCase):
         model.train(src, trg)
             
         # Save
-        with ModelFile(open(model_out, "w")) as fp:
-            model.save(fp)
+        serializer = ModelSerializer(model_out)
+        serializer.save(model)
 
         # Load
         model1 = EncDecNMT(InitArgs(model_out))
