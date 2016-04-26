@@ -26,6 +26,7 @@ class ParallelTrainer:
             onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=False):
         train_state = model.train_state()
         prev_loss   = train_state["loss"]
+        trained_epoch = -1
         for epoch in range(train_state["epoch"], max_epoch):
             trained        = 0
             epoch_loss     = 0
@@ -48,11 +49,11 @@ class ParallelTrainer:
             onEpochUpdate(epoch_loss, prev_loss, epoch)
             prev_loss = epoch_loss
             gc.collect()
-
+            trained_epoch = epoch
             if one_epoch:
                 break
 
-        onTrainingFinish(epoch)
+        onTrainingFinish(trained_epoch)
 
     def eval(self, dev_data, model):
         accum_loss = 0
