@@ -21,13 +21,13 @@ eps = 0.001
 class DictAttentional(Attentional):
     name = "dictattn" 
 
-    def __init__(self, src_voc, trg_voc, args, *other, **kwargs):
-        self._caching = args.dict_caching if hasattr(args, "dict_caching") else False
-        self._method  = args.dict_method if hasattr(args, "dict_method") else "bias"
-        self._unk_src = None
-        super(DictAttentional, self).__init__(src_voc, trg_voc, args, *other, **kwargs)
-        self._dict    = self._load_dictionary(args.dict, src_voc, trg_voc)
-
+    def __init__(self, src_voc, trg_voc, spec, *other, **kwargs):
+        self._caching = spec.dict_caching
+        self._method  = spec.dict_method
+        super(DictAttentional, self).__init__(src_voc, trg_voc, spec, *other, **kwargs)
+        self._dict     = self._load_dictionary(spec.dict, src_voc, trg_voc)
+        self._unk_src  = None
+        
     def _construct_model(self, input, output, hidden, depth, embed):
         parent_list = super(DictAttentional, self)._construct_model(input, output, hidden, depth, embed)
         
@@ -105,9 +105,9 @@ class DictAttentional(Attentional):
             for line in fp:
                 line = line.strip().split()
                 src, trg = line[1], line[0]
-                if src in self._src_voc and trg in self._trg_voc:
+                if src in src_voc and trg in trg_voc:
                     prob = float(line[2])
-                    dct[self._src_voc[src]][self._trg_voc[trg]] = prob
+                    dct[src_voc[src]][trg_voc[trg]] = prob
         self._dict_dir = dict_dir
         dct = dict(dct)
         return self._compile_dictionary(dct) if self._caching else dct
@@ -130,18 +130,10 @@ class DictAttentional(Attentional):
             raise ValueError("Unrecognized dictionary method:", self._method)
         return yp, is_prob
 
-    @staticmethod
-    def _load_details(fp, args, xp, SRC, TRG):
-        super(DictAttentional, DictAttentional)._load_details(fp, args, xp, SRC, TRG)
-        args.dict = fp.read()
-        args.dict_caching = fp.read() == "True"
-        args.dict_method  = fp.read()
-        if args.dict_method == "None":
-            args.dict_method = "bias"
+    def get_specification(self):
+        ret = super(DictAttentional, self).get_specification()
+        ret["dict"]          = self._dict_dir
+        ret["dict_caching"]  = self._caching
+        ret["dict_method"]   = self._method
+        return ret
 
-    def _save_details(self, fp):
-        super(DictAttentional, self)._save_details(fp)
-        fp.write(self._dict_dir)
-        fp.write(str(self._caching))
-        fp.write(self._method)
-    

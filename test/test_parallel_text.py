@@ -4,7 +4,7 @@ import numpy as np
 from chainer import optimizers
 
 from chainn.util import Vocabulary
-from chainn.util.io import ModelFile
+from chainn.util.io import ModelSerializer
 from chainn.test import TestCase
 from chainn.classifier import ParallelTextClassifier
 
@@ -21,7 +21,7 @@ class InitArgs(object):
     def __init__(self, init):
         self.init_model = init
 
-class TestEncDecClassifier(TestCase):
+class TestParallelTextClassifier(TestCase):
     def setUp(self):
         src_voc = Vocabulary()
         trg_voc = Vocabulary()
@@ -34,7 +34,7 @@ class TestEncDecClassifier(TestCase):
         self.trg_voc = trg_voc
 
     def test_read_write(self):
-        model = "/tmp/model.temp"
+        model = "/tmp/chainer-test/text/model.temp"
         X, Y  = self.src_voc, self.trg_voc
         
         # Train with 1 example
@@ -43,8 +43,8 @@ class TestEncDecClassifier(TestCase):
         self.model.train(inp, out)
         
         # Save
-        with ModelFile(open(model, "w")) as fp:
-            self.model.save(fp)
+        serializer = ModelSerializer(model)
+        serializer.save(self.model)
 
         # Load
         model1 = ParallelTextClassifier(InitArgs(model))

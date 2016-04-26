@@ -62,15 +62,11 @@ class Attentional(EncoderDecoder):
     def clean_state(self):
         self.h = None
         self.s = None
-
-    @staticmethod
-    def _load_details(fp, args, xp, SRC, TRG):
-        super(Attentional, Attentional)._load_details(fp, args, xp, SRC, TRG)
-        args.attention_type = fp.read()
-
-    def _save_details(self, fp):
-        super(Attentional, self)._save_details(fp)
-        fp.write(self._attention_type)
+    
+    def get_specification(self):
+        ret = super(Attentional, self).get_specification()
+        ret["attention_type"] = self._attention_type
+        return ret
 
 class Encoder(ChainList):
     def __init__(self, I, E, H, depth, dropout_ratio):

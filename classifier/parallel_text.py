@@ -6,7 +6,6 @@ from chainer import Variable
 from chainn import functions as UF
 from chainn.classifier import ChainnClassifier
 from chainn.model.text import RecurrentLSTM
-from chainn.util.io import ModelFile
 
 def collect_output(src_col, output, out):
     y = UF.argmax(out.data)

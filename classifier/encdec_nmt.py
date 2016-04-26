@@ -11,7 +11,6 @@ import chainn.util.functions as UF
 from chainn.classifier import ChainnClassifier
 from chainn.model.nmt import EncoderDecoder, Attentional, DictAttentional
 from chainn.util import DecodingOutput
-from chainn.util.io import ModelFile
 
 class EncDecNMT(ChainnClassifier):
     def __init__(self, *args, **kwargs):

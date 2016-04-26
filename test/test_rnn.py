@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 from chainn.model.text import RecurrentLSTM
 from chainn.util import Vocabulary
-from chainn.util.io import ModelFile
+from chainn.util.io import ModelSerializer
 from chainn.test import TestCase
 
 class Args(object):
@@ -32,12 +32,10 @@ class TestRecurrentLSTM(TestCase):
   
     def test_read_write(self):
         model = "/tmp/rnn.temp"
-        with ModelFile(open(model, "w")) as fp:
-            self.model.save(fp)
-
-        with ModelFile(open(model)) as fp:
-            fp.read()
-            model1 = self.model.load(fp, self.model.__class__, Args(), np)
+        serializer = ModelSerializer(model)
+        serializer._init_dir()
+        serializer._write_model(self.model)
+        model1 = serializer._read_model(self.Model)
         
         self.assertModelEqual(self.model, model1)
 

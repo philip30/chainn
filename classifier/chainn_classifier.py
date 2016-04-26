@@ -7,23 +7,38 @@ from chainer import cuda, Variable
 
 from chainn import functions as UF
 from chainn.chainer_component.functions import cross_entropy
-from chainn.util.io import ModelFile
+from chainn.util.io import ModelSerializer
 
 class ChainnClassifier(object):
     def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=-1, collect_output=False, activation=F.tanh):
+        ## We only instantitate the descendant of this class
+        assert hasattr(self, "_all_models"), "Shoudln't instantitate this class."
+
+        ## Default configuration
         self._opt            = optimizer
         self._xp, use_gpu    = UF.setup_gpu(use_gpu)
-        self._model          = self._load_model(args, X, Y, activation)
         self._collect_output = collect_output
         self._gpu_id         = use_gpu
-        self._train_state    = self._train_state = { "loss": 150, "epoch": 0}
-
+        self._train_state    = self._train_state = { "loss": 150, "epoch": 0 }
+        
+        ## Loading Classifier
+        if args.init_model:
+            serializer = ModelSerializer(args.init_model)
+            serializer.load(self, self._all_models, xp=self._xp)
+        else:
+            args.input  = len(X)
+            args.output = len(Y)
+            self._model = UF.select_model(args.model, self._all_models)(X, Y, args, xp=self._xp)
+       
+        ## Use GPU or not?
         if use_gpu >= 0:
             self._model = self._model.to_gpu(use_gpu)
         
-        # Setup Optimizer
+        ## Setup Optimizer
         if optimizer is not None:
             self._opt.setup(self._model)
+            if args.init_model:
+                serializer.load_optimizer(self._opt) 
     
     def train(self, x_data, y_data, learn=True, *args, **kwargs):
         accum_loss, output = self._train(x_data, y_data, not learn, *args, **kwargs)
@@ -61,29 +76,13 @@ class ChainnClassifier(object):
     def report(self):
         pass
     
-    ###################
-    ### Save & Load 
-    ###################
-    def save(self, fp):
-        fp.write_optimizer_state(self._opt)
-        fp.write(str(self._train_state))
-        self._model.save(fp, self._gpu_id)
+    def get_specification(self):
+        return self._train_state
 
-    def _load_model(self, args, X, Y, activation):
-        assert hasattr(self, "_all_models"), "Shoudln't instantitate this class."
-        
-        if args.init_model:
-            with ModelFile(open(args.init_model)) as model_in:
-                self._opt = model_in.read_optimizer_state()
-                self._train_state = ast.literal_eval(model_in.read())
-                name = model_in.read()
-                model = UF.select_model(name, self._all_models)
-                return model.load(model_in, model, args, self._xp)
-        else:
-            args.input  = len(X)
-            args.output = len(Y)
-            return UF.select_model(args.model, self._all_models)(X, Y, args, activation=activation, xp=self._xp)
-    
+    def set_specification(self, spec):
+        self._train_state["loss"] = spec.loss
+        self._train_state["epoch"] = spec.epoch
+
     ###################
     ### Abstract Method 
     ###################

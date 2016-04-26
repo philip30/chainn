@@ -2,7 +2,7 @@ import unittest
 import tempfile
 
 from chainn import Vocabulary
-from chainn.util.io import ModelFile
+from chainn.util.io import ModelSerializer
 from chainn.test import TestCase
 
 class TestDictionary(TestCase):
@@ -11,12 +11,13 @@ class TestDictionary(TestCase):
         voc["i"], voc["am"], voc["philip"]
         
         # writing
-        model = "/tmp/dict.temp"
-        with ModelFile(open(model,"w")) as fp:
-            voc.save(fp)
-
-        with ModelFile(open(model)) as fp:
-            voc_read = Vocabulary.load(fp)
+        model = "/tmp/dictionary"
+        serializer = ModelSerializer(model)
+        with open(model, "w") as voc_fp:
+            serializer._write_vocabulary(voc, voc_fp)
+        
+        with open(model) as voc_fp:
+            voc_read = serializer._read_vocabulary(voc_fp)
         
         self.assertVocEqual(voc, voc_read)
 
