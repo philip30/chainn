@@ -7,7 +7,7 @@ from chainer import Variable, ChainList
 
 # Chainn
 from chainn import functions as UF
-from chainn.link import StackLSTM
+from chainn.chainer_component.links import StackLSTM
 from chainn.model.nmt import EncoderDecoder
 from chainn.util import DecodingOutput
 
@@ -49,26 +49,24 @@ class Attentional(EncoderDecoder):
             yp = self._adjust_brevity(yp, eos_disc)
 
         # Enhance y
-        y = self._additional_score(yp, a, x_data)
-        
+        y, is_prob = self._additional_score(yp, a, x_data)
+        if not is_prob:
+            y = F.softmax(y)
+
         return DecodingOutput(y, a)
 
     # Whether we want to change y score by linguistic resources?
     def _additional_score(self, y, a, x_data):
-        return y
+        return y, False
 
     def clean_state(self):
         self.h = None
         self.s = None
-
-    @staticmethod
-    def _load_details(fp, args, xp, SRC, TRG):
-        super(Attentional, Attentional)._load_details(fp, args, xp, SRC, TRG)
-        args.attention_type = fp.read()
-
-    def _save_details(self, fp):
-        super(Attentional, self)._save_details(fp)
-        fp.write(self._attention_type)
+    
+    def get_specification(self):
+        ret = super(Attentional, self).get_specification()
+        ret["attention_type"] = self._attention_type
+        return ret
 
 class Encoder(ChainList):
     def __init__(self, I, E, H, depth, dropout_ratio):

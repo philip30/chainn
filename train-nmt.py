@@ -5,7 +5,7 @@ import chainn.util.functions as UF
 
 from chainer import optimizers
 from chainn.util import AlignmentVisualizer
-from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
+from chainn.util.io import ModelSerializer, load_nmt_train_data, batch_generator
 from chainn.classifier import EncDecNMT
 from chainn.machine import ParallelTrainer
 
@@ -20,8 +20,8 @@ parser.add_argument("--model_out", type=str, required=True)
 # Parameters
 parser.add_argument("--hidden", type=positive, default=128, help="Size of hidden layer.")
 parser.add_argument("--embed", type=positive, default=128, help="Size of embedding vector.")
-parser.add_argument("--batch", type=positive, default=512, help="Number of (src) words in batch.")
-parser.add_argument("--epoch", type=positive, default=10, help="Number of epoch to train the model.")
+parser.add_argument("--batch", type=positive, default=64, help="Number of (src) sentences in batch.")
+parser.add_argument("--epoch", type=positive, default=10, help="Number of max epoch to train the model.")
 parser.add_argument("--depth", type=positive, default=1, help="Depth of the network.")
 parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words in corpora to be treated as unknown.")
 parser.add_argument("--dropout", type=positive_decimal, default=0.2, help="Dropout ratio for LSTM.")
@@ -34,6 +34,7 @@ parser.add_argument("--gpu", type=int, default=-1, help="Specify GPU to be used,
 parser.add_argument("--init_model", type=str, help="Init the training weights with saved model.")
 parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn", help="Type of model being trained.")
 parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
+parser.add_argument("--one_epoch", action="store_true", help="Finish the training in 1 epoch")
 # Development set
 parser.add_argument("--src_dev", type=str)
 parser.add_argument("--trg_dev", type=str)
@@ -42,7 +43,7 @@ parser.add_argument("--attention_type", type=str, choices=["dot", "general", "co
 # DictAttn
 parser.add_argument("--dict",type=str, help="Tab separated trg give src dictionary")
 parser.add_argument("--dict_caching",action="store_true", help="Whether to cache the whole dictionary densely")
-parser.add_argument("--dict_method", type=str, help="Method to be used for dictionary", choices=["bias", "linear"])
+parser.add_argument("--dict_method", type=str, help="Method to be used for dictionary", choices=["bias", "linear"], default="bias")
 args = parser.parse_args()
 
 """ Sanity Check """
@@ -108,8 +109,8 @@ def save_model(epoch):
     if args.save_models:
         out_file += "-" + str(epoch)
     UF.trace("saving model to " + out_file + "...")
-    with ModelFile(open(out_file, "w")) as model_out:
-        model.save(model_out)
+    serializer = ModelSerializer(out_file)
+    serializer.save(model)
 
 def onEpochUpdate(epoch_loss, prev_loss, epoch):
     UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
@@ -127,8 +128,9 @@ def onEpochUpdate(epoch_loss, prev_loss, epoch):
 def onTrainingFinish(epoch):
     if not args.save_models or epoch % args.save_len != 0:
         save_model(epoch)
-    UF.trace("training complete!")
+    if epoch == args.epoch:
+        UF.trace("training complete!")
 
 """ Execute Training loop """
-trainer.train(train_data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish)
+trainer.train(train_data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=args.one_epoch)
 

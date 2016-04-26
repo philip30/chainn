@@ -6,7 +6,7 @@ import chainn.util.functions as UF
 
 from chainer import optimizers
 from chainn.util import AlignmentVisualizer
-from chainn.util.io import ModelFile, load_lm_data, batch_generator
+from chainn.util.io import ModelSerializer, load_lm_data, batch_generator
 from chainn.classifier import LanguageModel
 from chainn.machine import ParallelTrainer
 
@@ -18,7 +18,7 @@ parser.add_argument("--model_out", type=str, required=True)
 # Options
 parser.add_argument("--hidden", type=positive, default=128, help="Size of hidden layer.")
 parser.add_argument("--embed", type=positive, default=128, help="Size of embedding vector.")
-parser.add_argument("--batch", type=positive, default=512, help="Number of (src) words in batch.")
+parser.add_argument("--batch", type=positive, default=64, help="Number of (src) sentences in batch.")
 parser.add_argument("--epoch", type=positive, default=10, help="Number of epoch to train the model.")
 parser.add_argument("--depth", type=positive, default=1, help="Depth of the network.")
 parser.add_argument("--save_len", type=positive, default=1, help="Number of iteration being done for ")
@@ -82,8 +82,8 @@ def save_model(epoch):
     if args.save_models:
         out_file += "-" + str(epoch)
     UF.trace("saving model to " + out_file + "...")
-    with ModelFile(open(out_file, "w")) as model_out:
-        model.save(model_out)
+    serializer = ModelSerializer(out_file)
+    serializer.save(model)
 
 def onEpochUpdate(epoch_loss, prev_loss, epoch):
     UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))

@@ -1,7 +1,8 @@
 
 import chainer.links as L
+import chainer.functions as F
 from chainn.model import ChainnBasicModel
-from chainn.link import StackLSTM
+from chainn.chainer_component.links import StackLSTM
 
 class RecurrentLSTM(ChainnBasicModel):
     name = "lstm"
@@ -17,5 +18,5 @@ class RecurrentLSTM(ChainnBasicModel):
         self.inner.reset_state()
     
     def __call__(self, word, ref=None, is_train=False):
-        return self.output(self._activation(self.inner(self.embed(word), is_train=is_train)))
+        return F.softmax(self.output(self._activation(self.inner(self.embed(word), is_train=is_train))))
  

@@ -6,7 +6,6 @@ from chainer import Variable
 from chainn import functions as UF
 from chainn.classifier import ParallelTextClassifier
 from chainn.model.text import RecurrentLSTMLM
-from chainn.util.io import ModelFile
 
 def collect_output(src_col, output, out):
     for i in range(len(out)):

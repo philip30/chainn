@@ -4,7 +4,7 @@ import numpy as np
 from chainer import optimizers, Variable
 
 from chainn.util import Vocabulary
-from chainn.util.io import ModelFile, load_nmt_train_data, batch_generator
+from chainn.util.io import ModelSerializer, load_nmt_train_data, batch_generator
 from chainn.test import TestCase
 from chainn.model.nmt import Attentional
 
