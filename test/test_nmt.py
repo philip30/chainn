@@ -120,8 +120,8 @@ class TestNMT(TestCase):
     def test_NMT_dictattn_caching(self):
         self.run("dictattn", "--dict test/data/dict.txt --dict_caching")
 
-#    def test_NMT_one(self):
-#        self.run_one("attn", "--attention_type dot")
+    def test_NMT_one(self):
+        self.run_one("attn", "--attention_type dot")
 
 if __name__ == "__main__":
     unittest.main()

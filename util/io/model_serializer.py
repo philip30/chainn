@@ -31,16 +31,15 @@ class ModelSerializer:
             model_name    = model_file.readline().strip()
             Model         = UF.select_model(model_name, all_models)
         
-        # reading in opt state
-        if classifier._opt is not None:
-            serializers.load_npz(os.path.join(self.directory, "model.opt"), classifier._opt)
-        
         # reading in training state
         with open(os.path.join(self.directory, "model.state")) as state_file:
             training_state = self._read_specification(state_file)
             classifier.set_specification(training_state)
 
         classifier._model = self._read_model(Model, xp) 
+
+    def load_optimizer(self, optimizer):
+        serializers.load_npz(os.path.join(self.directory, "model.opt"), optimizer)
 
     ## classifier_state
     def _write_classifier(self, classifier):

@@ -37,6 +37,8 @@ class ChainnClassifier(object):
         ## Setup Optimizer
         if optimizer is not None:
             self._opt.setup(self._model)
+            if args.init_model:
+                serializer.load_optimizer(self._opt) 
     
     def train(self, x_data, y_data, learn=True, *args, **kwargs):
         accum_loss, output = self._train(x_data, y_data, not learn, *args, **kwargs)
