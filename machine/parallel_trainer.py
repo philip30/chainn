@@ -28,7 +28,7 @@ class ParallelTrainer:
         prev_loss   = train_state["loss"]
         trained_epoch = -1
         
-        for _ in range(train_state["epoch"])
+        for _ in range(train_state["epoch"]):
             random.shuffle(train_data)
 
         for epoch in range(train_state["epoch"], max_epoch):
