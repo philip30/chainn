@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import ast
 
 import chainer.functions as F
 from chainer import cuda, Variable
@@ -15,6 +16,7 @@ class ChainnClassifier(object):
         self._model          = self._load_model(args, X, Y, activation)
         self._collect_output = collect_output
         self._gpu_id         = use_gpu
+        self._train_state    = self._train_state = { "loss": 150, "epoch": 0}
 
         if use_gpu >= 0:
             self._model = self._model.to_gpu(use_gpu)
@@ -40,6 +42,13 @@ class ChainnClassifier(object):
     def eval(self, x_data, y_data, *args, **kwargs):
         return self._eval(x_data, y_data, *args, **kwargs)
 
+    def train_state(self):
+        return self._train_state
+
+    def update_state(self, epoch, loss):
+        self._train_state["epoch"] = epoch
+        self._train_state["loss"] = loss
+
     def get_vocabularies(self):
         return self._model._src_voc, self._model._trg_voc
 
@@ -57,6 +66,7 @@ class ChainnClassifier(object):
     ###################
     def save(self, fp):
         fp.write_optimizer_state(self._opt)
+        fp.write(str(self._train_state))
         self._model.save(fp, self._gpu_id)
 
     def _load_model(self, args, X, Y, activation):
@@ -65,6 +75,7 @@ class ChainnClassifier(object):
         if args.init_model:
             with ModelFile(open(args.init_model)) as model_in:
                 self._opt = model_in.read_optimizer_state()
+                self._train_state = ast.literal_eval(model_in.read())
                 name = model_in.read()
                 model = UF.select_model(name, self._all_models)
                 return model.load(model_in, model, args, self._xp)

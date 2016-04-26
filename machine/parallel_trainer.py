@@ -23,9 +23,10 @@ class ParallelTrainer:
         init_seed(seed)
 
     def train(self, train_data, model, max_epoch, \
-            onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish):
-        prev_loss  = 150
-        for epoch in range(max_epoch):
+            onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=False):
+        train_state = model.train_state()
+        prev_loss   = train_state["loss"]
+        for epoch in range(train_state["epoch"], max_epoch):
             trained        = 0
             epoch_loss     = 0
             
@@ -43,9 +44,13 @@ class ParallelTrainer:
                             
             # Cleaning up fro the next epoch
             epoch_loss /= len(train_data)
+            model.update_state(loss=float(epoch_loss), epoch=epoch+1)
             onEpochUpdate(epoch_loss, prev_loss, epoch)
             prev_loss = epoch_loss
             gc.collect()
+
+            if one_epoch:
+                break
 
         onTrainingFinish(epoch)
 
