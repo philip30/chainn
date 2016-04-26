@@ -5,10 +5,10 @@ import numpy as np
 
 from chainer import cuda
 
-def init_seed(seed):
+def init_seed(seed, use_gpu):
     if seed != 0:
         np.random.seed(seed)
-        if hasattr(cuda, "cupy"):
+        if use_gpu >= 0 and hasattr(cuda, "cupy"):
             cuda.cupy.random.seed(seed)
         random.seed(seed)
 
@@ -20,13 +20,17 @@ def init_gpu(use_gpu):
 class ParallelTrainer:
     def __init__(self, seed=0, use_gpu=-1):
         init_gpu(use_gpu)
-        init_seed(seed)
+        init_seed(seed, use_gpu)
 
     def train(self, train_data, model, max_epoch, \
             onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=False):
         train_state = model.train_state()
         prev_loss   = train_state["loss"]
         trained_epoch = -1
+        
+        for _ in range(train_state["epoch"])
+            random.shuffle(train_data)
+
         for epoch in range(train_state["epoch"], max_epoch):
             trained        = 0
             epoch_loss     = 0

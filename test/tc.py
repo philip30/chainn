@@ -19,7 +19,6 @@ class TestCase(unittest.TestCase):
         self.assertVocEqual(x._trg_voc, y._trg_voc)
         self.assertEqual(x._embed, y._embed)
         self.assertEqual(x._hidden, y._hidden)
-        self.assertEqual(str(x._activation), str(y._activation))
         self.assertChainListEqual(x, y)
 
     def assertChainListEqual(self, x, y):

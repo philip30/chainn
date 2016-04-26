@@ -100,8 +100,11 @@ class ModelSerializer:
         # reading in model
         with open(os.path.join(self.directory, "model.spec")) as spec_file:
             model_spec = self._read_specification(spec_file)
-        
-        return Model(src_voc, trg_voc, model_spec, xp=xp)
+       
+        # Construct model + weight
+        model = Model(src_voc, trg_voc, model_spec, xp=xp)
+        serializers.load_npz(os.path.join(self.directory, "model.weight"), model)
+        return model
 
     ## Helper Function
     def _init_dir(self):
