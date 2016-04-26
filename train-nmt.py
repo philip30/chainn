@@ -132,5 +132,8 @@ def onTrainingFinish(epoch):
         UF.trace("training complete!")
 
 """ Execute Training loop """
-trainer.train(train_data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=args.one_epoch)
+if args.one_epoch: one_epoch = True
+else: one_epoch = False
+
+trainer.train(train_data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=one_epoch)
 
