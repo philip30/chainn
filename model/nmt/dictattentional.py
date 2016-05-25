@@ -25,6 +25,8 @@ class DictAttentional(Attentional):
         self._caching = spec.dict_caching
         self._method  = spec.dict_method
         super(DictAttentional, self).__init__(src_voc, trg_voc, spec, *other, **kwargs)
+        self._src_voc  = src_voc
+        self._trg_voc  = trg_voc
         self._dict     = self._load_dictionary(spec.dict, src_voc, trg_voc)
         self._unk_src  = None
         
@@ -83,6 +85,7 @@ class DictAttentional(Attentional):
             ret_prob[trg_word] += p
             sum_prob += p
         ret_prob[self._src_voc.unk_id()] = 1.0 - sum_prob
+
         return ret_prob
 
     def unk_src_dict(self, src_dict, output_size):
@@ -104,7 +107,7 @@ class DictAttentional(Attentional):
         with open(dict_dir) as fp:
             for line in fp:
                 line = line.strip().split()
-                src, trg = line[1], line[0]
+                trg, src = line[0], line[1]
                 if src in src_voc and trg in trg_voc:
                     prob = float(line[2])
                     dct[src_voc[src]][trg_voc[trg]] = prob
