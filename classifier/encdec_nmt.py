@@ -101,20 +101,28 @@ class EncDecNMT(ChainnClassifier):
 eps = 1e-6
 def beam_search(beam_size, gen_limit, model, src, output, alignment, model_update, *args, **kwargs):
     queue     = [(0, model.get_state(), 0, DecodingOutput(), None)] # (num_decoded, state, log prob, output, parent)
+    result    = []
     beam_size = min(beam_size, len(model._trg_voc))
     EOL       = model._trg_voc.eos_id()
+    STUFF     = model._trg_voc.stuff_id()
     end_state = None
     # Beam search algorithm
     for loop in range(gen_limit):
         states = []
         reach_end = False
+
         for i, state in enumerate(queue):
             decoded, dec_state, prob, out, parent = state
             end_state = state
-            if i == 0 and out.y == EOL:
-                reach_end = True
-                break
             
+            if beam_size <= 0:
+                break
+
+            if out.y == EOL:
+                result.append(state)
+                beam_size -= 1
+                continue
+
             if loop != 0:
                 model.set_state(dec_state)
                 model_update(out.y)
@@ -130,11 +138,14 @@ def beam_search(beam_size, gen_limit, model, src, output, alignment, model_updat
             # Update model state based on those words
             for index in agmx:
                 states.append((decoded+1, dec_state, prob + math.log(y[index] + eps), DecodingOutput(index, out_a), state))
-        if reach_end:
-            break
 
-        states = sorted(states, key=lambda x: x[2], reverse=True)
-        queue = states[:beam_size]
+        if beam_size <= 0: break
+
+        states = sorted(states, key=lambda x: x[2], reverse=True)[:beam_size]
+        queue = states
+    
+    if len(result) != 0:
+        end_state = sorted(result, key=lambda x:(x[2]/x[0]), reverse=True)[0]
 
     # Collecting output (1-best)
     while end_state is not None:

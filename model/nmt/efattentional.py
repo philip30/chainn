@@ -44,14 +44,14 @@ class Attentional(EncoderDecoder):
         # Calculate the score of all target word (not yet softmax)
         yp = self.decoder(self.s, a, self.h)
         
-        # To adjust brevity score during decoding
-        if eos_disc != 0.0:
-            yp = self._adjust_brevity(yp, eos_disc)
-
         # Enhance y
         y, is_prob = self._additional_score(yp, a, x_data)
         if not is_prob:
             y = F.softmax(y)
+        
+        # To adjust brevity score during decoding
+        if eos_disc != 0.0:
+            y = self._adjust_brevity(y, eos_disc)
 
         return DecodingOutput(y, a)
 
