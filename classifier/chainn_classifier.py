@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import ast
+import sys
 
 import chainer.functions as F
 from chainer import cuda, Variable
@@ -25,6 +26,7 @@ class ChainnClassifier(object):
         if args.init_model:
             serializer = ModelSerializer(args.init_model)
             serializer.load(self, self._all_models, xp=self._xp)
+            self._model.report(sys.stderr, verbosity=1)
         else:
             args.input  = len(X)
             args.output = len(Y)
