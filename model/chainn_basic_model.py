@@ -29,4 +29,6 @@ class ChainnBasicModel(ChainList):
                 "depth": self._depth, "hidden": self._hidden, \
                 "embed": self._embed }
         return ret
-
+    
+    def report(self, stream, verbosity=0):
+        pass

@@ -139,4 +139,14 @@ class DictAttentional(Attentional):
         ret["dict_caching"]  = self._caching
         ret["dict_method"]   = self._method
         return ret
+    
+    def report(self, stream, verbosity=0):
+        if verbosity >= 1:
+            if self._method == "linear":
+                x = self.LI.W.data
+                print("Interpolation coefficient x=%f, sigmoid(x)=%f" % (x, sigmoid(x)), file=stream)
 
+# Some supports
+import math
+def sigmoid(x):
+    return 1.0 / (1 + math.exp(-x))
