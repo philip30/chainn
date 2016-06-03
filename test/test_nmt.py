@@ -74,7 +74,7 @@ class TestNMT(TestCase):
                 trg_voc[tok]
             model = EncDecNMT(Args(model), src_voc, trg_voc, optimizer=optimizers.SGD())
     
-            model_out = "/tmp/model-nmt.temp"
+            model_out = "/tmp/nmt/tmp"
             X, Y  = src_voc, trg_voc
             
             # Train with 1 example
