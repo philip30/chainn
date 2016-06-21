@@ -28,7 +28,7 @@ class EncoderDecoder(ChainnBasicModel):
     # Encoding all the source sentence
     def reset_state(self, x_data, is_train=False, *args, **kwargs):
         s = self.encoder(x_data, is_train=is_train)
-        self.h = self.decoder.reset(s)
+        self.h     = self.decoder.reset_state(s)
         return self.h
     
     # Decode one word
@@ -38,10 +38,10 @@ class EncoderDecoder(ChainnBasicModel):
         
         # To adjust brevity score during decoding
         if not is_train and eos_disc != 0.0:
-            y = self._adjust_brevity(yp, eos_disc)
+            y = self._adjust_brevity(yp, eos_disc, is_train=is_train)
         y = F.softmax(y)
 
-        return DecodingOutput(y)
+        return DecodingOutput({"y": y})
 
     # Update decoding state
     def update(self, wt, is_train=False):
@@ -49,9 +49,10 @@ class EncoderDecoder(ChainnBasicModel):
 
     # Adjusting brevity during decoding
     def _adjust_brevity(self, yp, eos_disc):
+        volatile = "off" if is_train else "on"
         v = self._xp.ones(len(self._trg_voc), dtype=np.float32)
         v[self._trg_voc.eos_id()] = 1-eos_disc
-        v  = F.broadcast_to(Variable(v), yp.data.shape)
+        v  = F.broadcast_to(Variable(v, volatile=volatile), yp.data.shape)
         return yp * v
 
     def clean_state(self):
@@ -79,7 +80,8 @@ class Encoder(ChainList):
         B  = len(src)      # Batch Size
         N  = len(src[0])   # length of source
         H  = self.H
-        src_col = lambda x: Variable(self.xp.array([src[i][x] for i in range(B)], dtype=np.int32))
+        volatile = "off" if is_train else "on"
+        src_col = lambda x: Variable(self.xp.array([src[i][x] for i in range(B)], dtype=np.int32), volatile=volatile)
         embed   = lambda e, x: e(self.IE(x), is_train=is_train)
         
         # State Reset
@@ -103,7 +105,7 @@ class Decoder(ChainList):
         self.HE = L.Linear(H, E)
         super(Decoder, self).__init__(self.DF, self.WS, self.OE, self.HE)
 
-    def reset(self, s, is_train=False):
+    def reset_state(self, s, is_train=False):
         self.DF.reset_state()
         return self.DF(self.HE(s), is_train=is_train)
 

@@ -1,57 +1,56 @@
 import unittest
 import numpy as np
-from chainn.model.text import RecurrentLSTM
+
+from chainer import optimizers
+
 from chainn.util import Vocabulary
 from chainn.util.io import ModelSerializer
 from chainn.test import TestCase
+from chainn.classifier import RNN
 
 class Args(object):
-    pass
+    def __init__(self):
+        self.hidden = 10
+        self.use_cpu = True
+        self.embed = 20
+        self.model = "lstm"
+        self.depth = 2
+        self.init_model = False
 
-class TestRecurrentLSTM(TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestRecurrentLSTM, self).__init__(*args, **kwargs)
-        self.Model = RecurrentLSTM
+class InitArgs(object):
+    def __init__(self, init):
+        self.init_model = init
 
+class TestRNN(TestCase):
     def setUp(self):
         src_voc = Vocabulary()
         trg_voc = Vocabulary()
+        for tok in "I am Philip".split():
+            src_voc[tok]
+        for tok in "私 は フィリップ です".split():
+            trg_voc[tok]
+        self.model = RNN(Args(), src_voc, trg_voc, optimizer=optimizers.SGD())
+        self.src_voc = src_voc
+        self.trg_voc = trg_voc
 
-        for word in ["my", "name", "is", "philip", "."]:
-            src_voc[word]
-
-        for tag in ["PRP", "NN", "VBZ", "NNP", "."]:
-            trg_voc[word]
-        args = Args()
-        args.input  = len(src_voc)
-        args.output = len(trg_voc)
-        args.hidden = 5
-        args.depth  = 1
-        args.embed  = 5
-        self.model = self.Model(src_voc, trg_voc, args)
-  
     def test_read_write(self):
-        model = "/tmp/rnn.temp"
-        serializer = ModelSerializer(model)
-        serializer._init_dir()
-        serializer._write_model(self.model)
-        model1 = serializer._read_model(self.Model)
+        model = "/tmp/chainer-test/text/model.temp"
+        X, Y  = self.src_voc, self.trg_voc
         
-        self.assertModelEqual(self.model, model1)
+        # Train with 1 example
+        inp = np.array([[X["Philip"], X["I"]]], dtype=np.int32)
+        out = np.array([[Y["フィリップ"], Y["私"]]], dtype=np.int32)
+        self.model.train(inp, out)
+        
+        # Save
+        serializer = ModelSerializer(model)
+        serializer.save(self.model)
 
-    def test_init_size(self):
-        self.assertEqual(len(self.model.inner) + 2, 3) # embed, hiddenx1, output
-
-    def test_depth_size(self):
-        args = Args()
-        args.depth = 5
-        args.input = 1
-        args.output = 1
-        args.embed = 1
-        args.hidden = 1
-        model = self.Model(Vocabulary(), Vocabulary(), args)
-        self.assertEqual(len(model.inner) + 2, 7) # Embed, 5*Hidden, Output
+        # Load
+        model1 = RNN(InitArgs(model))
+            
+        # Check
+        self.assertModelEqual(self.model._model, model1._model)
 
 if __name__ == "__main__":
     unittest.main()
-

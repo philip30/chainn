@@ -4,7 +4,7 @@ import sys
 import argparse
 
 from chainn import functions as UF
-from chainn.classifier import ParallelTextClassifier
+from chainn.classifier import RNN
 from chainn.util.io import load_pos_test_data
 from chainn.machine import Tester
 
@@ -12,10 +12,9 @@ from chainn.machine import Tester
 parser = argparse.ArgumentParser()
 positive = lambda x: UF.check_positive(x, int)
 # Required
-parser.add_argument("--init_model", type=str, help="Directory to the model trained with train-nmt.", required=True)
+parser.add_argument("--init_model", nargs="+", type=str, help="Directory to the model trained with train-nmt.", required=True)
 # Options
 parser.add_argument("--batch", type=positive, default=512, help="Number of source word in the batch.")
-parser.add_argument("--src", type=str, help="Specify this to do batched decoding, it has a priority than stdin.")
 parser.add_argument("--use_cpu", action="store_true")
 parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu).")
 parser.add_argument("--verbose", action="store_true")
@@ -27,7 +26,7 @@ if args.use_cpu:
 
 # Loading model
 UF.trace("Setting up classifier")
-model    = ParallelTextClassifier(args, use_gpu=args.gpu, collect_output=True)
+model    = RNN(args, use_gpu=args.gpu, collect_output=True)
 SRC, TRG = model.get_vocabularies()
 
 # Testing callbacks
@@ -40,19 +39,13 @@ def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
 def onDecodingStart():
     UF.trace("Tagging started.")
 
-def onBatchUpdate(ctr, src, trg):
-    # Decoding
-    if args.verbose:
-        print_result(ctr, trg, TRG, src, SRC, sys.stderr)
-
 def onSingleUpdate(ctr, src, trg):
-    print(TRG.str_rpr(trg[0]))
+    print(TRG.str_rpr(trg.y[0]))
 
-def onDecodingFinish(data, output):
-    for src_id, (inp, out) in sorted(output.items(), key=lambda x:x[0]):
-        print(TRG.str_rpr(out))
+def onDecodingFinish():
+    pass
 
 # Execute testing
-tester = Tester(load_pos_test_data, SRC, onDecodingStart, onBatchUpdate, onSingleUpdate, onDecodingFinish, batch=args.batch)
-tester.test(args.src, model)
+tester = Tester(load_pos_test_data, SRC, onDecodingStart, onSingleUpdate, onDecodingFinish)
+tester.test(model)
    

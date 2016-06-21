@@ -28,14 +28,14 @@ class TestNMT(TestCase):
        
         # Run
         script    = path.join(self.script, "execute_nmt.sh")
-        script_ont = path.join(self.script, "execute_nmt_one.sh")
+        script_one = path.join(self.script, "execute_nmt_one.sh")
         src       = path.join(self.data, "nmt.en")
         trg       = path.join(self.data, "nmt.ja")
         test      = path.join(self.data, "nmt-test.en")
         train_nmt = path.join("train-nmt.py")
         test_nmt  = path.join("nmt.py")
         self.run = lambda x, y: check_call([script, src, trg, test, train_nmt, test_nmt, x, y])
-        self.run_one = lambda x, y: check_call([script_ont, src, trg, test, train_nmt, test_nmt, x, y]) 
+        self.run_one = lambda x, y: check_call([script_one, src, trg, test, train_nmt, test_nmt, x, y]) 
         
     def test_NMT_3_read_train(self):
         src=["I am Philip", "I am a student"]

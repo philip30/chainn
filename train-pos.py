@@ -5,9 +5,8 @@ import chainer.functions as F
 import chainn.util.functions as UF
 
 from chainer import optimizers
-from chainn.util import AlignmentVisualizer
 from chainn.util.io import ModelSerializer, load_pos_train_data, batch_generator
-from chainn.classifier import ParallelTextClassifier
+from chainn.classifier import RNN
 from chainn.machine import ParallelTrainer
 
 parser = argparse.ArgumentParser("Program to train POS Tagger model using LSTM")
@@ -50,7 +49,7 @@ UF.trace("Data loaded.")
 """ Setup model """
 UF.trace("Setting up classifier")
 opt   = optimizers.Adam()
-model = ParallelTextClassifier(args, X, Y, opt, args.gpu, activation=F.relu, collect_output=args.verbose)
+model = RNN(args, X, Y, opt, args.gpu, collect_output=args.verbose)
 
 """ Training Callback """
 def onEpochStart(epoch):
@@ -66,7 +65,7 @@ def report(output, src, trg, trained, epoch):
 def onBatchUpdate(output, src, trg, trained, epoch, accum_loss):
     if args.verbose:
         report(output, src, trg, trained, epoch)
-    UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])))
+    UF.trace("Trained %d: %f, col_size=%d" % (trained, math.exp(accum_loss), len(trg[0])))
 
 def save_model(epoch):
     out_file = args.model_out
@@ -77,7 +76,6 @@ def save_model(epoch):
     serializer.save(model)
 
 def onEpochUpdate(epoch_loss, prev_loss, epoch):
-    UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
     UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
 
     # saving model

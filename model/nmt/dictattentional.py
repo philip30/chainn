@@ -39,7 +39,7 @@ class DictAttentional(Attentional):
         
         return parent_list
  
-    def reset_state(self, src, *args, **kwargs):
+    def reset_state(self, src, *args, is_train=False, **kwargs):
         SRC = self._src_voc
         TRG = self._trg_voc
         dct = self._dict
@@ -47,6 +47,7 @@ class DictAttentional(Attentional):
         vocab_size = self._output
         batch_size = len(src)
         src_len = len(src[0])
+        volatile = "off" if is_train else "on"
 
         prob_dict = np.zeros((batch_size, src_len, vocab_size), dtype=np.float32)
        
@@ -60,9 +61,8 @@ class DictAttentional(Attentional):
                         prob_dict[i][j] = self.calculate_local_cache_dict(src_word, dct)
                 else:
                     prob_dict[i][j] = self.unk_src_dict(self._src_voc, self._output)
-        
-        self.prob_dict = Variable(xp.array(prob_dict))
-        return super(DictAttentional, self).reset_state(src, *args, **kwargs) 
+        self.prob_dict = Variable(xp.array(prob_dict), volatile=volatile)
+        return super(DictAttentional, self).reset_state(src, *args, is_train=is_train, **kwargs) 
 
     def clean_state(self):
         self.prob_dict = None
@@ -121,8 +121,8 @@ class DictAttentional(Attentional):
         xp         = self._xp
         src_len    = len(self.prob_dict)
         # Calculating dict prob
+        is_prob=False
         y_dict = F.reshape(F.batch_matmul(self.prob_dict, a, transa=True), (batch_size, vocab_size))
-        is_prob = False
         # Using dict prob
         if self._method == "bias":
             yp = y + F.log(eps + y_dict)

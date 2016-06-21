@@ -49,7 +49,7 @@ def argmax(data):
     data = cuda.to_cpu(data).argmax(axis=1)
     return [x for x in data]
 
-def argmax_index(data, top=1):
+def nargmax(data, top=1):
     data = cuda.to_cpu(data)
     top = min(top, len(data))
     return np.argpartition(data, -top)[-top:]

@@ -10,7 +10,7 @@ from chainn.classifier import EncDecNMT
 from chainn.machine import ParallelTrainer
 
 """ Arguments """
-parser = argparse.ArgumentParser("A trainer for NMT model.")
+parser = argparse.ArgumentParser("NMT system training script.")
 positive = lambda x: UF.check_positive(x, int)
 positive_decimal = lambda x: UF.check_positive(x, float)
 # Required
@@ -22,7 +22,7 @@ parser.add_argument("--hidden", type=positive, default=128, help="Size of hidden
 parser.add_argument("--embed", type=positive, default=128, help="Size of embedding vector.")
 parser.add_argument("--batch", type=positive, default=64, help="Number of (src) sentences in batch.")
 parser.add_argument("--epoch", type=positive, default=10, help="Number of max epoch to train the model.")
-parser.add_argument("--depth", type=positive, default=1, help="Depth of the network.")
+parser.add_argument("--depth", type=positive, default=1, help="Layers used for the network.")
 parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words in corpora to be treated as unknown.")
 parser.add_argument("--dropout", type=positive_decimal, default=0.2, help="Dropout ratio for LSTM.")
 # Configuration
@@ -35,9 +35,10 @@ parser.add_argument("--init_model", type=str, help="Init the training weights wi
 parser.add_argument("--model",type=str,choices=["encdec","attn","dictattn"], default="attn", help="Type of model being trained.")
 parser.add_argument("--seed", type=int, default=0, help="Seed for RNG. 0 for totally random seed.")
 parser.add_argument("--one_epoch", action="store_true", help="Finish the training in 1 epoch")
+parser.add_argument("--debug", type=bool, default=False, help="Whether to start the model in deubg mode")
 # Development set
-parser.add_argument("--src_dev", type=str)
-parser.add_argument("--trg_dev", type=str)
+parser.add_argument("--src_dev", type=str, help="Development data src")
+parser.add_argument("--trg_dev", type=str, help="Development data trg")
 # Attentional
 parser.add_argument("--attention_type", type=str, choices=["dot", "general", "concat"], default="dot", help="How to calculate attention layer")
 # DictAttn
@@ -64,6 +65,7 @@ if args.save_models:
 trainer   = ParallelTrainer(args.seed, args.gpu)
  
 # data
+UF.trace("By Philip Arthur")
 UF.trace("Loading corpus + dictionary")
 with open(args.src) as src_fp:
     with open(args.trg) as trg_fp:
@@ -86,7 +88,7 @@ if args.src_dev and args.trg_dev:
 """ Setup model """
 UF.trace("Setting up classifier")
 opt   = optimizers.Adam()
-model = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose)
+classifier = EncDecNMT(args, SRC, TRG, opt, args.gpu, collect_output=args.verbose, debug_mode=args.debug)
 
 """ Training Callback """
 def onEpochStart(epoch):
@@ -102,38 +104,34 @@ def report(output, src, trg, trained, epoch):
 def onBatchUpdate(output, src, trg, trained, epoch, accum_loss):
     if args.verbose:
         report(output, src, trg, trained, epoch)
-    UF.trace("Trained %d: %f, col_size=%d" % (trained, accum_loss, len(trg[0])-1)) # minus the last </s>
+    UF.trace("Trained %d: %f, col_size=%d" % (trained, math.exp(accum_loss), len(trg[0])-1)) # minus the last </s>
 
-def save_model(epoch):
+def save_classifier(epoch):
     out_file = args.model_out
     if args.save_models:
         out_file += "-" + str(epoch)
     UF.trace("saving model to " + out_file + "...")
     serializer = ModelSerializer(out_file)
-    serializer.save(model)
+    serializer.save(classifier)
 
 def onEpochUpdate(epoch_loss, prev_loss, epoch):
-    UF.trace("Train Loss:", float(prev_loss), "->", float(epoch_loss))
     UF.trace("Train PPL:", math.exp(float(prev_loss)), "->", math.exp(float(epoch_loss)))
 
     if dev_data is not None:
-        dev_loss = trainer.eval(dev_data, model)
-        UF.trace("Dev Loss:", float(dev_loss))
+        dev_loss = trainer.eval(dev_data, classifier)
         UF.trace("Dev PPL:", math.exp(float(dev_loss)))
 
     # saving model
     if args.save_models and (epoch + 1) % args.save_len == 0:
-        save_model(epoch)        
+        save_classifier(epoch) 
 
 def onTrainingFinish(epoch):
     if not args.save_models or epoch % args.save_len != 0:
-        save_model(epoch)
+        save_classifier(epoch)
     if epoch == args.epoch:
         UF.trace("training complete!")
 
 """ Execute Training loop """
-if args.one_epoch: one_epoch = True
-else: one_epoch = False
-
-trainer.train(train_data, model, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=one_epoch)
+one_epoch = True if args.one_epoch else False
+trainer.train(train_data, classifier, args.epoch, onEpochStart, onBatchUpdate, onEpochUpdate, onTrainingFinish, one_epoch=args.one_epoch)
 

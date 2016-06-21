@@ -14,10 +14,8 @@ from chainn.machine import Tester
 parser = argparse.ArgumentParser("A Neural Machine Translation Decoder.")
 positive = lambda x: UF.check_positive(x, int)
 # Required
-parser.add_argument("--init_model", type=str, help="Directory to the model trained with train-nmt.", required=True)
+parser.add_argument("--init_model", nargs="+", type=str, help="Directory to the model trained with train-nmt.", required=True)
 # Options
-parser.add_argument("--batch", type=positive, default=512, help="Number of source word in the batch.")
-parser.add_argument("--src", type=str, help="Specify this to do batched decoding, it has a priority than stdin.")
 parser.add_argument("--gen_limit", type=positive, default=50)
 parser.add_argument("--use_cpu", action="store_true")
 parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negative for cpu).")
@@ -30,17 +28,16 @@ args  = parser.parse_args()
 """ Sanity Check """
 if args.use_cpu:
     args.gpu = -1
-if args.src and args.batch != 1 and args.beam > 1:
-    raise ValueError("Batched decoding does not support beam search.")
 
 """ Begin Testing """
 ao_fp = UF.load_stream(args.align_out)
 decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc, "beam": args.beam}
 
 # Loading model
+UF.trace("~ By Philip Arthur")
 UF.trace("Setting up classifier")
-model    = EncDecNMT(args, use_gpu=args.gpu, collect_output=True)
-SRC, TRG = model.get_vocabularies()
+classifier    = EncDecNMT(args, use_gpu=args.gpu, collect_output=True)
+SRC, TRG = classifier.get_vocabularies()
 
 # Testing callbacks
 def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
@@ -66,17 +63,12 @@ def onSingleUpdate(ctr, src, trg):
     if trg.a is not None:
         AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=align_fp)
 
-def onDecodingFinish(data, output):
-    align_fp = ao_fp if ao_fp is not None else sys.stderr
-    for src_id, (inp, out) in sorted(output.items(), key=lambda x:x[0]):
-        if type(out) == tuple:
-            out, align = out
-            AlignmentVisualizer.print([align], src_id, [inp], [out], SRC, TRG, fp=align_fp)
-        print(TRG.str_rpr(out))
+def onDecodingFinish():
+    pass
 
 # Execute testing
-tester = Tester(load_nmt_test_data, SRC, onDecodingStart, onBatchUpdate, onSingleUpdate, onDecodingFinish, options=decoding_options, batch=args.batch)
-tester.test(args.src, model)
+tester = Tester(load_nmt_test_data, SRC, onDecodingStart, onSingleUpdate, onDecodingFinish, options=decoding_options)
+tester.test(classifier)
 
 # Finishing up
 if ao_fp is not None:

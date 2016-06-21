@@ -31,13 +31,13 @@ class Attentional(EncoderDecoder):
         return [self.encoder, self.attention, self.decoder]
     
     # Encode all the words in the input sentence
-    def reset_state(self, x_data, is_train=False, *args, **kwargs):
+    def reset_state(self, x_data, *args, is_train=False, **kwargs):
         self.s, s_n = self.encoder(x_data, is_train=is_train, xp=self._xp)
         self.h = self.decoder.reset(s_n, is_train=is_train)
         return self.s
     
     # Produce one target word
-    def __call__ (self, x_data, is_train=False, eos_disc=0.0, *args, **kwargs):
+    def __call__ (self, x_data, *args, is_train=False, eos_disc=0.0, **kwargs):
         # Calculate alignment weights between hidden state and source vector context
         a  = self.attention(self.h, self.s)
         
@@ -53,7 +53,7 @@ class Attentional(EncoderDecoder):
         if eos_disc != 0.0:
             y = self._adjust_brevity(y, eos_disc)
 
-        return DecodingOutput(y, a)
+        return DecodingOutput({"y": y, "a": a})
 
     # Whether we want to change y score by linguistic resources?
     def _additional_score(self, y, a, x_data):
@@ -82,7 +82,8 @@ class Encoder(ChainList):
         B  = len(src)      # Batch Size
         N  = len(src[0])   # length of source
         H  = self.H
-        src_col = lambda x: Variable(self.xp.array([src[i][x] for i in range(B)], dtype=np.int32))
+        volatile = "off" if is_train else "on"
+        src_col = lambda x: Variable(self.xp.array([src[i][x] for i in range(B)], dtype=np.int32), volatile=volatile)
         embed   = lambda e, x: e(self.IE(x), is_train=is_train)
         bi_rnn  = lambda x, y: self.AE(F.concat((x[0], y[1]), axis=1))
         concat_source = lambda S, s: s if S is None else F.concat((S, s), axis=2)

@@ -1,8 +1,6 @@
 
-import chainer.links as L
 from chainn.util import Vocabulary
 from chainn.model.text import RecurrentLSTM
-from chainn.chainer_component.links import StackLSTM
 
 class RecurrentLSTMLM(RecurrentLSTM):
     def _save_vocabulary(self, fp):

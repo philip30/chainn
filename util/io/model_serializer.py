@@ -22,7 +22,7 @@ class ModelSerializer:
         self._write_classifier(classifier)
         self._write_model(classifier._model)
     
-    def load(self, classifier, all_models, xp):
+    def load(self, classifier, all_models, xp, is_training=False):
         if not os.path.exists(self.directory):
             raise Exception("Could not find directory:", self.directory)
         
@@ -32,11 +32,12 @@ class ModelSerializer:
             Model         = UF.select_model(model_name, all_models)
         
         # reading in training state
-        with open(os.path.join(self.directory, "model.state")) as state_file:
-            training_state = self._read_specification(state_file)
-            classifier.set_specification(training_state)
-
-        classifier._model = self._read_model(Model, xp) 
+        if is_training:
+            with open(os.path.join(self.directory, "model.state")) as state_file:
+                training_state = self._read_specification(state_file)
+                classifier.set_specification(training_state)
+        
+        return self._read_model(Model, xp)
 
     def load_optimizer(self, optimizer):
         serializers.load_npz(os.path.join(self.directory, "model.opt"), optimizer)
