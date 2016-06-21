@@ -24,7 +24,7 @@ parser.add_argument("--batch", type=positive, default=64, help="Number of (src) 
 parser.add_argument("--epoch", type=positive, default=10, help="Number of max epoch to train the model.")
 parser.add_argument("--depth", type=positive, default=1, help="Layers used for the network.")
 parser.add_argument("--unk_cut", type=int, default=1, help="Threshold for words in corpora to be treated as unknown.")
-parser.add_argument("--dropout", type=positive_decimal, default=0.2, help="Dropout ratio for LSTM.")
+parser.add_argument("--dropout", type=float, default=0.2, help="Dropout ratio for LSTM.")
 # Configuration
 parser.add_argument("--save_len", type=positive, default=1, help="Number of iteration being done for ")
 parser.add_argument("--verbose", action="store_true", help="To output the training progress for every sentence in corpora.")
