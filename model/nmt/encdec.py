@@ -48,7 +48,7 @@ class EncoderDecoder(ChainnBasicModel):
         self.h = self.decoder.update(wt, is_train=is_train)
 
     # Adjusting brevity during decoding
-    def _adjust_brevity(self, yp, eos_disc):
+    def _adjust_brevity(self, yp, eos_disc, is_train=False):
         volatile = "off" if is_train else "on"
         v = self._xp.ones(len(self._trg_voc), dtype=np.float32)
         v[self._trg_voc.eos_id()] = 1-eos_disc
