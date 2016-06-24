@@ -77,11 +77,11 @@ class ModelSerializer:
             self.__write_attribute(fp, spec_name, spec_val)
 
     def _read_specification(self, spec_file):
-        ret = lambda: None
+        ret = {}
         for line in spec_file:
             spec_name, spec_value = self.__read_attribute(line)
-            setattr(ret, spec_name, spec_value)
-        return ret
+            ret[spec_name] = spec_value
+        return Specification(ret)
 
     def _read_vocabulary(self, fp):
         _, size = self.__read_attribute(fp.readline())
@@ -132,4 +132,20 @@ class ModelSerializer:
         elif typ == "str": pass
         else: raise ValueError("Unknown type:", typ)
         return name, val
+
+class Specification:
+    def __init__(self, params):
+        self.__params = params
+
+        for key, val in params.items():
+            setattr(self, key, val)
+    
+    def __getitem__(self, key):
+        return self.__params[key]
+
+    def __setitem__(self, key, value):
+        self.__params[key] = value
+
+    def items(self):
+        return self.__params.items()
 

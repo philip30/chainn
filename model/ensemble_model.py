@@ -14,6 +14,7 @@ class EnsembleModel(object):
     def to_gpu(self, use_gpu):
         for model in self._models:
             model.to_gpu(use_gpu)
+        return self
     
     def eos_id(self):
         return self._models[0]._trg_voc.eos_id()
@@ -38,7 +39,7 @@ class EnsembleModel(object):
             y = 0
             normalizer = len(self._models)
             for i, model in enumerate(self._models):
-                doutput = model(src, is_train=False, *args, **kwargs)
+                doutput = model(src, *args, is_train=False, **kwargs)
                 y       += doutput.y
 
                 # Here we only store the first full result of all the models

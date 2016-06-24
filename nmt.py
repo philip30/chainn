@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
-import sys
-import argparse
+import sys, argparse
 
 from chainn import functions as UF
 
 from chainn.classifier import EncDecNMT
-from chainn.util import AlignmentVisualizer
 from chainn.util.io import load_nmt_test_data
-from chainn.machine import Tester
+from chainn.machine import NMTTester
 
 """ Arguments """
 parser = argparse.ArgumentParser("A Neural Machine Translation Decoder.")
-positive = lambda x: UF.check_positive(x, int)
+positive     = lambda x: UF.check_positive(x, int)
+non_negative = lambda x: UF.check_non_negative(x, int)
+non_negative_dec = lambda x: UF.check_non_negative(x, float)
 # Required
 parser.add_argument("--init_model", nargs="+", type=str, help="Directory to the model trained with train-nmt.", required=True)
 # Options
@@ -22,55 +22,10 @@ parser.add_argument("--gpu", type=int, default=-1, help="Which GPU to use (Negat
 parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--align_out", type=str)
 parser.add_argument("--beam", type=positive, default=1)
-parser.add_argument("--eos_disc", type=float, default=0.0, help="Give fraction positive discount to output longer sentence.")
+parser.add_argument("--eos_disc", type=non_negative_dec, default=0.0, help="Give fraction positive discount to output longer sentence.")
 args  = parser.parse_args()
 
-""" Sanity Check """
-if args.use_cpu:
-    args.gpu = -1
-
-""" Begin Testing """
-ao_fp = UF.load_stream(args.align_out)
-decoding_options = {"gen_limit": args.gen_limit, "eos_disc": args.eos_disc, "beam": args.beam}
-
-# Loading model
-UF.trace("~ By Philip Arthur")
-UF.trace("Setting up classifier")
-classifier    = EncDecNMT(args, use_gpu=args.gpu, collect_output=True)
-SRC, TRG = classifier.get_vocabularies()
-
-# Testing callbacks
-def print_result(ctr, trg, TRG, src, SRC, fp=sys.stderr):
-    for i, (sent, result) in enumerate(zip(src, trg.y)):
-        print(ctr + i, file=fp)
-        print("SRC:", SRC.str_rpr(sent), file=fp)
-        print("TRG:", TRG.str_rpr(result), file=fp)
-    fp.flush()
-
-def onDecodingStart():
-    UF.trace("Decoding started.")
-
-def onBatchUpdate(ctr, src, trg):
-    # Decoding
-    if args.verbose:
-        print_result(ctr, trg, TRG, src, SRC, sys.stderr)
-
-def onSingleUpdate(ctr, src, trg):
-    align_fp = ao_fp if ao_fp is not None else sys.stderr
-    if args.verbose:
-        print_result(ctr, trg, TRG, src, SRC, sys.stderr)
-    print(TRG.str_rpr(trg.y[0]))
-    if trg.a is not None:
-        AlignmentVisualizer.print(trg.a, ctr, src, trg.y, SRC, TRG, fp=align_fp)
-
-def onDecodingFinish():
-    pass
-
 # Execute testing
-tester = Tester(load_nmt_test_data, SRC, onDecodingStart, onSingleUpdate, onDecodingFinish, options=decoding_options)
-tester.test(classifier)
-
-# Finishing up
-if ao_fp is not None:
-    ao_fp.close()
+tester = NMTTester(args, load_nmt_test_data)
+tester.test()
 

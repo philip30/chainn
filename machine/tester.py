@@ -4,25 +4,34 @@ from chainn.util import functions as UF
 from chainn.util.io import batch_generator
 
 class Tester:
-    def __init__(self, loader, inp_vocab, onDecodingStart, onSingleUpdate, onDecodingFinish, out_vocab=None, options={}):
-        self._inp_vocab        = inp_vocab
-        self._out_vocab        = out_vocab
-        self._decoding_options = options
+    def __init__(self, params, loader):
+        self.assigned_gpu      = UF.init_global_environment(0, params.gpu, params.use_cpu)
+        self.decoding_options  = self.load_decoding_options(params)
         self.loader            = loader
-        self.onDecodingStart   = onDecodingStart
-        self.onSingleUpdate    = onSingleUpdate
-        self.onDecodingFinish  = onDecodingFinish
+        self.classifier        = self.load_classifier(params)
    
     # Predict output
-    def test(self, classifier):
-        return self.__single_decoding(sys.stdin, classifier)
-       
-    ### Local Routines
-    def __single_decoding(self, data, classifier):
+    def test(self):
         self.onDecodingStart()
-        for i, line in enumerate(data):
-            inp = list(batch_generator(self.loader([line.strip()], self._inp_vocab), (self._inp_vocab,), 1))[0][0]
-            out = classifier.classify(inp, **self._decoding_options)
+        for i, line in enumerate(sys.stdin):
+            inp = list(batch_generator(self.loader([line.strip()], self._src_voc), (self._src_voc,), 1))[0][0]
+            out = self.classifier.classify(inp, **self.decoding_options)
             self.onSingleUpdate(i, inp, out)
         self.onDecodingFinish()
+    
+    def onDecodingStart(self):
+        UF.trace("Decoding started.")
 
+    def onDecodingFinish(self):
+        pass
+
+    # Abstract Methods
+    def onSingleUpdate(self, ctr, src, trg):
+        raise NotImplementedError()
+
+    def load_decoding_options(self, params):
+        raise NotImplementedError()
+
+    def load_classifier(self, params):
+        raise NotImplementedError()
+    

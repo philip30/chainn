@@ -1,14 +1,13 @@
 import numpy as np
 import math
-import ast
 import sys
-
 import chainer.functions as F
-from chainer import cuda, Variable
+
+from collections import defaultdict
+from chainer import Variable, cuda
 
 from chainn import functions as UF
 from chainn.chainer_component.functions import cross_entropy
-from chainn.util import DecodingOutput
 from chainn.util.io import ModelSerializer
 from chainn.model import EnsembleModel
 
@@ -20,10 +19,10 @@ class ChainnClassifier(object):
 
         ## Default configuration
         self._opt            = optimizer
-        self._xp, use_gpu    = UF.setup_gpu(use_gpu)
+        self._xp             = cuda.cupy if use_gpu >= 0 else np
         self._collect_output = collect_output
         self._gpu_id         = use_gpu
-        self._train_state    = self._train_state = { "loss": 150, "epoch": 0 }
+        self._train_state    = defaultdict(lambda: None, {"epoch": 0})
         self._debug_mode     = debug_mode
         
         ## Loading Classifier
@@ -44,11 +43,11 @@ class ChainnClassifier(object):
             args.input  = len(X)
             args.output = len(Y)
             self._model = UF.select_model(args.model, self._all_models)(X, Y, args, xp=self._xp)
-       
+
         ## Use GPU or not?
         if use_gpu >= 0:
             self._model = self._model.to_gpu(use_gpu)
-        
+
         ## Setup Optimizer
         if optimizer is not None and type(self._model) != EnsembleModel:
             self._opt.setup(self._model)
@@ -167,13 +166,16 @@ class ChainnClassifier(object):
     def get_specification(self):
         return self._train_state
     
-    def update_state(self, epoch, loss):
-        self._train_state["epoch"] = epoch
+    def update_state(self, loss, epoch, dev_loss=None):
         self._train_state["loss"] = loss
-    
+        self._epoch["epoch"] = epoch
+
+        if dev_loss is not None:
+            self._dev_loss["dev_loss"] = dev_loss
+        
+
     def set_specification(self, spec):
-        self._train_state["loss"] = spec.loss
-        self._train_state["epoch"] = spec.epoch
+        self._train_state = spec
 
     ###################
     ### Protected method

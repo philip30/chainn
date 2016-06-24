@@ -1,13 +1,23 @@
 
-import argparse
-import sys
-import datetime
+import argparse, sys, random, datetime
 import numpy as np
 from . import globalvars
 from chainer import cuda
-from numpy.random import RandomState
 
 # Utility
+def init_global_environment(seed, gpu_num, use_cpu):
+    if use_cpu:
+        gpu_num = -1
+    
+    # Init seed and use GPU
+    if seed != 0:
+        np.random.seed(seed)
+        if gpu_num >= 0 and hasattr(cuda, "cupy"):
+            cuda.get_device(gpu_num).use()
+            cuda.cupy.random.seed(seed)
+        random.seed(seed)
+    return gpu_num
+
 def trace(*args):
     print(datetime.datetime.now(), '...', *args, file=sys.stderr)
     sys.stderr.flush()
@@ -21,29 +31,6 @@ def load_stream(fp):
         return sys.stderr
     else:
         return open(fp, "w")
-
-def print_argmax(data, file=sys.stdout):
-    data = cuda.to_cpu(data).argmax(1)
-    for x in data:
-        print(x, file=file)
-
-def setup_gpu(use_gpu):
-    ret = None
-    if not hasattr(cuda, "cupy"):
-        use_gpu  = -1
-        ret = np
-    else:
-        if use_gpu >= 0:
-            ret = cuda.cupy
-            cuda.get_device(use_gpu).use()
-        else:
-            ret = np
-    return ret, use_gpu
-
-def print_classification(data, trg, file=sys.stdout):
-    data = cuda.to_cpu(data).argmax(1)
-    for x in data:
-        print(trg.tok_rpr(x), file=file)
 
 def argmax(data):
     data = cuda.to_cpu(data).argmax(axis=1)
@@ -67,4 +54,11 @@ def check_positive(value, cast=float):
     if ivalue <= 0:
          raise argparse.ArgumentTypeError("%s is an invalid positive value" % value)
     return ivalue
+
+def check_non_negative(value, cast=float):
+    ivalue = cast(value)
+    if ivalue < 0:
+         raise argparse.ArgumentTypeError("%s is an invalid non-negative value" % value)
+    return ivalue
+
 
