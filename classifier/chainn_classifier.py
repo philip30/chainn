@@ -24,6 +24,7 @@ class ChainnClassifier(object):
         self._gpu_id         = use_gpu
         self._train_state    = defaultdict(lambda: None, {"epoch": 0})
         self._debug_mode     = debug_mode
+        self._backprop_len   = 80 if not hasattr(args, "backprop_len") else args.backprop_len
         
         ## Loading Classifier
         if args.init_model:
@@ -59,12 +60,8 @@ class ChainnClassifier(object):
     def train(self, x_data, y_data, *args, learn=True, **kwargs):
         accum_loss, output = self._train(x_data, y_data, self._model, not learn, *args, **kwargs)
         if learn:
-            if not self._debug_mode or not math.isnan(float(accum_loss.data)):
-                self._model.zerograds()
-                accum_loss.backward()
-                self._opt.update()
-            else:
-                UF.trace("Warning: LOSS is nan, ignoring!")
+            self._back_propagate(accum_loss)
+            
         return accum_loss.data, output
     
     #### Perform classification with beam search algorithm
@@ -150,7 +147,16 @@ class ChainnClassifier(object):
                 model.predictor.report()
         else:
             self._model.predictor.report()
-   
+
+    def _back_propagate(self, accum_loss):
+        if not self._debug_mode or not math.isnan(float(accum_loss.data)):
+            self._model.zerograds()
+            accum_loss.backward()
+            accum_loss.unchain_backward()
+            self._opt.update()
+        else:
+            UF.trace("Warning: LOSS is nan, ignoring!")
+
     #######################
     ### Setter + Getter ###
     #######################
@@ -209,6 +215,10 @@ class ChainnClassifier(object):
             accum_loss += self._calculate_loss(doutput.y, s_t, is_dev)
             # Update the model state
             model.update(s_t, is_train=is_train)
+
+            # Check for bptt len
+            if (j+1) % self._backprop_len == 0:
+                self._back_propagate(accum_loss)
 
             # Collecting output
             if self._collect_output:
