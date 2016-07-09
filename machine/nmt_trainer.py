@@ -1,3 +1,4 @@
+import chainn.util.functions as UF
 from chainn.machine import ParallelTrainer
 from chainn.classifier import EncDecNMT
 from chainn.util.io import load_nmt_train_data, batch_generator

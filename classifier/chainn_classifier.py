@@ -16,7 +16,6 @@ class ChainnClassifier(object):
     def __init__(self, args, X=None, Y=None, optimizer=None, use_gpu=-1, collect_output=False, debug_mode=False):
         ## We only instantitate the descendant of this class
         assert hasattr(self, "_all_models"), "Shouldn't instantitate this class."
-
         ## Default configuration
         self._opt            = optimizer
         self._xp             = cuda.cupy if use_gpu >= 0 else np

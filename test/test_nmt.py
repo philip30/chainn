@@ -66,62 +66,33 @@ class TestNMT(TestCase):
     
     def test_NMT_2_read_write(self):
         for model in ["encdec", "attn"]:
-            src_voc = Vocabulary()
-            trg_voc = Vocabulary()
-            for tok in "</s> I am Philip".split():
-                src_voc[tok]
-            for tok in "</s> 私 は フィリップ です".split():
-                trg_voc[tok]
-            model = EncDecNMT(Args(model), src_voc, trg_voc, optimizer=optimizers.SGD())
-    
-            model_out = "/tmp/nmt/tmp"
-            X, Y  = src_voc, trg_voc
-            
-            # Train with 1 example
-            src = np.array([[X["I"], X["am"], X["Philip"]]], dtype=np.int32)
-            trg = np.array([[Y["私"], Y["は"], Y["フィリップ"], Y["です"]]], dtype=np.int32)
-            
-            model.train(src, trg)
+            with self.subTest(model=model):
+                src_voc = Vocabulary()
+                trg_voc = Vocabulary()
+                for tok in "</s> I am Philip".split():
+                    src_voc[tok]
+                for tok in "</s> 私 は フィリップ です".split():
+                    trg_voc[tok]
+                model = EncDecNMT(Args(model), src_voc, trg_voc, optimizer=optimizers.SGD())
+        
+                model_out = "/tmp/nmt/tmp"
+                X, Y  = src_voc, trg_voc
                 
-            # Save
-            serializer = ModelSerializer(model_out)
-            serializer.save(model)
-    
-            # Load
-            model1 = EncDecNMT(InitArgs(model_out))
+                # Train with 1 example
+                src = np.array([[X["I"], X["am"], X["Philip"]]], dtype=np.int32)
+                trg = np.array([[Y["私"], Y["は"], Y["フィリップ"], Y["です"]]], dtype=np.int32)
                 
-            # Check
-            self.assertModelEqual(model._model, model1._model)
-
-    def test_NMT_encdec(self):
-        self.run("encdec", "")
-
-    def test_NMT_attn_dot(self):
-        self.run("attn", "--attention_type dot")
-    
-    def test_NMT_attn_general(self):
-        self.run("attn", "--attention_type general")
-
-    def test_NMT_attn_concat(self):
-        self.run("attn", "--attention_type concat")
-
-    def test_NMT_dictattn(self):
-        self.run("dictattn", "--dict test/data/dict.txt")
-    
-    def test_NMT_dictattn_bias(self):
-        self.run("dictattn", "--dict test/data/dict.txt --dict_method bias")
-    
-    def test_NMT_dictattn_linear(self):
-        self.run("dictattn", "--dict test/data/dict.txt --dict_method linear")
-    
-    def test_NMT_dictattn_caching(self):
-        self.run("dictattn", "--dict test/data/dict.txt --dict_caching")
-
-    def test_NMT_dictattn_caching(self):
-        self.run("dictattn", "--dict test/data/dict.txt --dict_caching")
-
-    def test_NMT_one(self):
-        self.run_one("attn", "--attention_type dot")
+                model.train(src, trg)
+                    
+                # Save
+                serializer = ModelSerializer(model_out)
+                serializer.save(model)
+        
+                # Load
+                model1 = EncDecNMT(InitArgs(model_out))
+                    
+                # Check
+                self.assertModelEqual(model._model, model1._model)
 
 if __name__ == "__main__":
     unittest.main()

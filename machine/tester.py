@@ -11,9 +11,9 @@ class Tester:
         self.classifier        = self.load_classifier(params)
    
     # Predict output
-    def test(self):
+    def test(self, stream=sys.stdin):
         self.onDecodingStart()
-        for i, line in enumerate(sys.stdin):
+        for i, line in enumerate(stream):
             inp = list(batch_generator(self.loader([line.strip()], self._src_voc), (self._src_voc,), 1))[0][0]
             out = self.classifier.classify(inp, **self.decoding_options)
             self.onSingleUpdate(i, inp, out)

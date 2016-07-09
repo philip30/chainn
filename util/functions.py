@@ -6,9 +6,8 @@ from chainer import cuda
 
 # Utility
 def init_global_environment(seed, gpu_num, use_cpu):
-    if use_cpu:
+    if use_cpu or not hasattr(cuda, "cupy"):
         gpu_num = -1
-    
     # Init seed and use GPU
     if seed != 0:
         np.random.seed(seed)
