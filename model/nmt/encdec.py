@@ -28,7 +28,7 @@ class EncoderDecoder(ChainnBasicModel):
     # Encoding all the source sentence
     def reset_state(self, x_data, is_train=False, *args, **kwargs):
         s = self.encoder(x_data, is_train=is_train)
-        self.h     = self.decoder.reset_state(s)
+        self.h     = self.decoder.reset_state(s, is_train=is_train)
         return self.h
     
     # Decode one word

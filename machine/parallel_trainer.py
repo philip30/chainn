@@ -23,6 +23,7 @@ class ParallelTrainer(object):
         max_epoch     = self.max_epoch
         train_data    = self.train_data
         dev_data      = self.dev_data
+        continue_next = True
         train_state   = model.get_train_state()
        
         # If we are starting from middle, make sure that we have the same randomness
@@ -66,8 +67,9 @@ class ParallelTrainer(object):
             # After that initialize the model by --init_model model_n
             if self.one_epoch:
                 break
-        
-        self.onTrainingFinish(train_state["epoch"], train_state["epoch"] == max_epoch)
+       
+        training_finish = train_state["epoch"] == max_epoch or not continue_next
+        self.onTrainingFinish(train_state["epoch"], training_finish)
 
     # Evaluation on development set
     def eval(self):

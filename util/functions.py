@@ -8,11 +8,12 @@ from chainer import cuda
 def init_global_environment(seed, gpu_num, use_cpu):
     if use_cpu or not hasattr(cuda, "cupy"):
         gpu_num = -1
+    if gpu_num >= 0 and hasattr(cuda, "cupy"):
+        cuda.get_device(gpu_num).use()
     # Init seed and use GPU
     if seed != 0:
         np.random.seed(seed)
         if gpu_num >= 0 and hasattr(cuda, "cupy"):
-            cuda.get_device(gpu_num).use()
             cuda.cupy.random.seed(seed)
         random.seed(seed)
     return gpu_num
