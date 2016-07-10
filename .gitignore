@@ -1,6 +1,8 @@
 /data
 /out
 /temp
+/build
+/dist
 *.pyc
 *.log
 *.out
@@ -8,5 +10,7 @@
 *.model
 *.swp
 *.swo
+*.egg-info
+.coverage
 .python-version
 .nfs*
