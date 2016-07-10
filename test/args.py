@@ -7,7 +7,7 @@ class Args:
         self.verbose = True
         self.one_epoch = False
         self.unk_cut = 0
-        self.batch = 2
+        self.batch = 1
         self.src_dev = ""
         self.trg_dev = ""
         self.optimizer = "adam"
@@ -15,7 +15,7 @@ class Args:
         self.init_model = ""
         self.gen_limit = 10 
         self.eos_disc = 0
-        self.beam = 1
+        self.beam = 10
         self.align_out = None
         self.dict_caching = True
         self.dict_method = "bias"

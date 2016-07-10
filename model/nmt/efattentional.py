@@ -145,22 +145,25 @@ class AttentionLayer(ChainList):
 class Decoder(ChainList):
     def __init__(self, O, E, H, depth, dropout_ratio):
         self.DF = StackLSTM(E, H, depth, dropout_ratio)
-        self.WS = L.Linear(H, O)
-        self.WC = L.Linear(2*H, H)
-        self.OE = L.EmbedID(O, E)
-        self.HE = L.Linear(H, E)
+        self.WS = L.Linear(H, O)     # ht to Output_size
+        self.WC = L.Linear(2*H, H)   # context + hidden to ht
+        self.OE = L.EmbedID(O, E)    # Embed the new word in the decoder
+        self.HE = L.Linear(H, E)     # Last state of encoder to init decoder
+        self.IF = L.Linear(H+E, E)   # Input Feeding
         super(Decoder, self).__init__(self.DF, self.WS, self.WC, self.OE, self.HE)
     
     def __call__(self, s, a, h):
         c = F.reshape(F.batch_matmul(a, s, transa=True), h.data.shape)
         ht = F.tanh(self.WC(F.concat((h, c), axis=1)))
+        self.last_ht = ht
         return self.WS(ht)
 
     # Conceive the first state of decoder based on the last state of encoder
     def reset(self, s, is_train=False):
         self.DF.reset_state()
+        self.last_ht = None
         return self.DF(self.HE(s), is_train=is_train)
 
     def update(self, wt, is_train=False):
-        return self.DF(self.OE(wt), is_train=is_train)
+        return self.DF(self.IF(F.concat((self.last_ht, self.OE(wt)), axis=1)), is_train=is_train)
 

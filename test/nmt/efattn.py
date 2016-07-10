@@ -6,7 +6,7 @@ from chainn.util.io import load_nmt_test_data
 class TestAttentional(TestCase):
     def setUp(self):
         self.train_args = Args(src="test/data/nmt.en", trg="test/data/nmt.ja", model_out="/tmp/chainn/nmt/model/attn", model="attn",\
-                hidden=100, epoch=5, embed=100, depth=2)
+                hidden=128, epoch=20, embed=128, depth=1)
         self.test_args = Args(init_model=["/tmp/chainn/nmt/model/attn"])
             
     def test_1train_encdec(self):
