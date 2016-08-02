@@ -17,11 +17,11 @@ class Args(object):
         self.init_model = False
 
 class InitArgs(object):
-    def __init__(self, model1, model2):
-        self.init_model = [model1, model2]
+    def __init__(self, *model):
+        self.init_model = [*model]
 
-class TestBeam(TestCase):
-    def test_beam(self):
+class TestEnsemble(TestCase):
+    def test_ensemble(self):
         src_voc = Vocabulary()
         trg_voc = Vocabulary()
         for tok in "</s> I am Philip You are a".split():
@@ -49,8 +49,19 @@ class TestBeam(TestCase):
         serializer.save(model2)
 
         # Load
-        ens    = EncDecNMT(InitArgs(model_out1, model_out2))
-        k      = ens.classify(src, beam=10)
+        ens    = EncDecNMT(InitArgs(model_out1, model_out2))._model
+        model1 = EncDecNMT(InitArgs(model_out1))._model[0]
+        model2 = EncDecNMT(InitArgs(model_out2))._model[0]
+        
+        ens.reset_state(src)
+        model1.reset_state(src)
+        model2.reset_state(src)
+
+        y, _ = ens.classify(src)
+        y1   = model1(src, is_train=False).y
+        y2   = model2(src, is_train=False).y
+
+        np.testing.assert_array_equal(y.data, (y1.data + y2.data)/2)
 
 if __name__ == "__main__":
     unittest.main()
