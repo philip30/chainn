@@ -36,6 +36,5 @@ setup(
             'chainn.model.text',
             'chainn.test'
         ],
-        test_suite='chainn_test.suite',
         platforms='requires Python Chainer Numpy'
         )
