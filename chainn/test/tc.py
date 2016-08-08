@@ -2,12 +2,17 @@ import unittest
 import chainn
 import numpy as np
 
+from chainn.util.functions import init_global_environment
+
 from chainer import ChainList
 from chainer.links.connection.linear import Linear
 from chainer.links.connection.embed_id import EmbedID
 from chainer.links.connection.lstm import LSTM
 
 class TestCase(unittest.TestCase):
+    def setUp(self):
+        init_global_environment(38, 0, False)
+    
     def assertVocEqual(self, x, y):
         self.assertEqual(x._data, y._data)
         self.assertEqual(x._back, y._back)

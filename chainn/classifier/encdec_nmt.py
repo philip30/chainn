@@ -29,7 +29,11 @@ class EncDecNMT(ChainnClassifier):
                 holder.y[i][src_col] = y[i]
         else:
             holder.y[0][src_col] = word
-        
+       
+        if not hasattr(holder, "prob"):
+            setattr(holder, "prob", [])
+        holder.prob.append(out.y.data)
+
         try:
             a = out.a
             if a is not None:

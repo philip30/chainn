@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import sys
+import copy
 import chainer.functions as F
 
 from collections import defaultdict
@@ -64,7 +65,7 @@ class ChainnClassifier(object):
         return accum_loss.data, output
     
     #### Perform classification with beam search algorithm
-    def classify(self, x_data, *args, gen_limit=None, beam=1, **kwargs):
+    def classify(self, x_data, *args, gen_limit=None, beam=1, allow_empty=True, **kwargs):
         if gen_limit is None:
             gen_limit = len(x_data[0])
         # Init data
@@ -80,12 +81,11 @@ class ChainnClassifier(object):
 
         # Perform encoding + Reset state
         models.reset_state(x_data, is_train=False, *args, **kwargs)
-
+        
         # Beam Search Decoding
         for decoded in range(gen_limit):
             # All possible states for this expansion
             expanded_states = []
-    
             for i, state in enumerate(queue):
                 _, dec_state, prob, word, _, _ = state
                 model_input = self._prepare_decode_input(x_data, decoded, is_train=False)
@@ -94,8 +94,9 @@ class ChainnClassifier(object):
                     break
     
                 if word == EOL:
-                    nbest_list.append(state)
-                    beam_size -= 1
+                    if decoded != 1 or allow_empty:
+                        nbest_list.append(state)
+                        beam_size -= 1
                     continue
 
                 if decoded != 0:
@@ -107,7 +108,7 @@ class ChainnClassifier(object):
                 # y_o is other result
                 y, y_o    = models.classify(model_input, *args, **kwargs)
                 y         = y.data[0]
-                dec_state = models.get_state()
+                dec_state = copy.deepcopy(models.get_state())
                 
                 # Take up several maximum words that have highest probabilities
                 # Queue up the next states, with the intended update by the word for current state
@@ -121,14 +122,15 @@ class ChainnClassifier(object):
             if beam_size <= 0 or len(expanded_states) == 0:
                 break
             queue = sorted(expanded_states, key=lambda x: x[2], reverse=True)[:beam_size]
-       
+            
         # If the model is too bad so it doesnt produce any sentence ends with <EOL>
         if len(nbest_list) == 0:
             nbest_list = queue
 
         if len(nbest_list) != 0:
-            state = sorted(nbest_list, key=lambda x:(x[2]/x[0]), reverse=True)[0]
-           
+            sorted_nbest = sorted(nbest_list, key=lambda x:(x[2]/x[0]), reverse=True)
+            state = sorted_nbest[0]
+            
             # Collecting output (1-best)
             while state is not None:
                 decoded, this_state, prob, word, parent, other_output = state
