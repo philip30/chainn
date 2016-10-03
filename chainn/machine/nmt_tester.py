@@ -1,11 +1,13 @@
 import sys
-from chainn.util import AlignmentVisualizer, functions as UF
-from chainn.machine import Tester
+
 from chainn.classifier import EncDecNMT
+from chainn.machine import Tester
+from chainn.util import AlignmentVisualizer, functions as UF
+from chainn.util.io import load_nmt_test_data
 
 class NMTTester(Tester):
-    def __init__(self, params, loader):
-        super(NMTTester, self).__init__(params, loader)
+    def __init__(self, params):
+        super(NMTTester, self).__init__(params, load_nmt_test_data)
         self.align_stream = UF.load_stream(params.align_out)
 
     def load_classifier(self, params):
@@ -31,4 +33,3 @@ class NMTTester(Tester):
     def load_decoding_options(self, params):
         return {"gen_limit": params.gen_limit, "eos_disc": params.eos_disc, "beam": params.beam}
 
-   

@@ -1,17 +1,39 @@
-import unittest
+
 import chainn
+import chainer.links.connection.linear
+import chainer.links.connection.embed_id
+import chainer.links.connection.lstm
 import numpy as np
+import unittest
 
-from chainn.util.functions import init_global_environment
+class NMTArgs:
+    def __init__(self, **kwargs):
+        self.align_out    = None
+        self.batch        = 1
+        self.beam         = 10
+        self.debug        = True
+        self.dict_caching = True
+        self.dict_method  = "bias"
+        self.eos_disc     = 0
+        self.gen_limit    = 10 
+        self.gpu          = 1
+        self.init_model   = ""
+        self.one_epoch    = False
+        self.optimizer    = "adam"
+        self.save_models  = False
+        self.seed         = 1
+        self.src_dev      = ""
+        self.trg_dev      = ""
+        self.unk_cut      = 0
+        self.use_cpu      = False
+        self.verbose      = True
 
-from chainer import ChainList
-from chainer.links.connection.linear import Linear
-from chainer.links.connection.embed_id import EmbedID
-from chainer.links.connection.lstm import LSTM
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 class TestCase(unittest.TestCase):
     def setUp(self):
-        init_global_environment(38, 0, False)
+        chainn.util.functions.init_global_environment(38, 0, False)
     
     def assertVocEqual(self, x, y):
         self.assertEqual(x._data, y._data)
@@ -27,7 +49,7 @@ class TestCase(unittest.TestCase):
         self.assertChainListEqual(x, y)
 
     def assertChainListEqual(self, x, y):
-        self.assertTrue(issubclass(x.__class__, ChainList))
+        self.assertTrue(issubclass(x.__class__, chainer.ChainList))
         self.assertEqual(type(x), type(y))
         self.assertEqual(len(x), len(y))
 
@@ -38,13 +60,13 @@ class TestCase(unittest.TestCase):
 
     def assertLinkEqual(self, xi, yi):
         self.assertEqual(type(xi), type(yi))
-        if type(xi) == Linear:
+        if type(xi) == linear.Linear:
             self.assertLinearEqual(xi, yi)
-        elif type(xi) == EmbedID:
+        elif type(xi) == embed_id.EmbedID:
             self.assertEmbedEqual(xi, yi)
-        elif type(xi) == LSTM:
+        elif type(xi) == lstm.LSTM:
             self.assertLSTMEqual(xi, yi)
-        elif issubclass(xi.__class__, ChainList):
+        elif issubclass(xi.__class__, chainer.ChainList):
             self.assertChainListEqual(xi, yi)
         else:
             raise NotImplementedError()

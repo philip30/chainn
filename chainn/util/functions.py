@@ -1,7 +1,6 @@
 
 import argparse, sys, random, datetime
 import numpy as np
-from . import globalvars
 from chainer import cuda
 
 # Utility

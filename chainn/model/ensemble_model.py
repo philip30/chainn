@@ -52,3 +52,6 @@ class EnsembleModel(object):
     
     def __getitem__(self, index):
         return self._models[index]
+    
+    def __len__(self):
+        return len(self._models)

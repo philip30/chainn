@@ -9,6 +9,7 @@ from chainn import Vocabulary
 class ModelSerializer:
     def __init__(self, directory, compress=False):
         self.directory = directory
+        self.compress  = compress
 
     def __enter__(self):
         return self

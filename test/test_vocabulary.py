@@ -1,6 +1,5 @@
+import chainn
 import unittest
-from chainn.test import TestCase
-from chainn.util import Vocabulary
 
 def add_words(vocab):
     vocab.add_word("this")
@@ -9,9 +8,9 @@ def add_words(vocab):
     vocab.add_word("test")
     return vocab
 
-class TestVocabulary(TestCase):
+class TestVocabulary(chainn.test.TestCase):
     def setUp(self):
-        self.vocab = add_words(Vocabulary())
+        self.vocab = add_words(chainn.Vocabulary())
 
     def test_add_word(self):
         for word_id, word in enumerate(["this", "is", "a", "test"]):
@@ -24,9 +23,9 @@ class TestVocabulary(TestCase):
     def test_get_word(self):
         self.assertEqual(self.vocab.word(0), "this")
 
-class TestVocabularyPlus(TestCase):
+class TestVocabularyPlus(chainn.test.TestCase):
     def setUp(self):
-        self.vocab = add_words(Vocabulary(\
+        self.vocab = add_words(chainn.Vocabulary(\
                 add_eos=True, add_unk=True, add_stuff=True))
 
     def test_unk_exists(self):

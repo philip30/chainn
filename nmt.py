@@ -3,9 +3,6 @@
 import sys, argparse
 
 from chainn import functions as UF
-
-from chainn.classifier import EncDecNMT
-from chainn.util.io import load_nmt_test_data
 from chainn.machine import NMTTester
 
 """ Arguments """
@@ -26,6 +23,6 @@ parser.add_argument("--eos_disc", type=non_negative_dec, default=0.0, help="Give
 args  = parser.parse_args()
 
 # Execute testing
-tester = NMTTester(args, load_nmt_test_data)
+tester = NMTTester(args)
 tester.test()
 

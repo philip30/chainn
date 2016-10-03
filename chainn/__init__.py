@@ -1,3 +1,2 @@
-from chainn.util import functions
-from chainn.util.vocabulary import Vocabulary
-from chainn.util.globalvars import version
+import chainn.test
+from  chainn.vocabulary import Vocabulary

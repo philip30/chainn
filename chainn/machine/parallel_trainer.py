@@ -96,7 +96,8 @@ class ParallelTrainer(object):
         else:
             UF.trace("Train PPL:", ppl)
         prev_state["loss"] = float(epoch_loss)
-    
+        prev_state["epoch"] += 1
+        
         # Reporting Perplexity of testing data
         # If perplexity increased, stop the iteration earlier
         continue_next_iter    = True
@@ -116,13 +117,12 @@ class ParallelTrainer(object):
             prev_state["dev_loss"] = float(dev_loss)
         
         # Saving model if only perplexity is not increased
+        
         if continue_next_iter:
             self.save_classifier(epoch)
         else:
             UF.trace("Development perplexity increased, finishing iteration now.")
         
-        # Updating epoch information
-        prev_state["epoch"] += 1
         return continue_next_iter
     
     def onBatchUpdate(self, output, src, trg, trained, epoch, accum_loss):

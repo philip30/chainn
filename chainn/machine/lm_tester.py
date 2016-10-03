@@ -1,11 +1,12 @@
 import math
-from chainn.util import functions as UF
-from chainn.machine import Tester
 from chainn.classifier import RNNLM
+from chainn.machine import Tester
+from chainn.util import functions as UF
+from chainn.util.io import load_lm_gen_data
 
 class LMTester(Tester):
-    def __init__(self, params, loader):
-        super(LMTester, self).__init__(params, loader)
+    def __init__(self, params):
+        super(LMTester, self).__init__(params, load_lm_gen_data)
         self.operation = params.operation
         self.total_loss = 0
         self.total_sent = 0
@@ -17,6 +18,9 @@ class LMTester(Tester):
         self._trg_voc = vocab
         return model
     
+    def load_decoding_options(self, params):
+        return { "beam": params.beam, "eos_disc": params.eos_disc }
+
     def onSingleUpdate(self, ctr, src, trg):
         if self.operation == "gen":
             print(self._trg_voc.str_rpr(trg.y[0]))
@@ -26,9 +30,6 @@ class LMTester(Tester):
             self.total_sent += 1
             if self.operation == "sppl":
                 print(math.exp(loss))
-    
-    def load_decoding_options(self, params):
-        return { "beam": params.beam, "eos_disc": params.eos_disc }
 
     def onDecodingStart(self):
         op = self.operation
@@ -44,5 +45,4 @@ class LMTester(Tester):
     def onDecodingFinish(self):
         if self.operation == "cppl":
             print(math.exp(float(self.total_loss)/self.total_sent))
-
 
